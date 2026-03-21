@@ -5,6 +5,9 @@ import { revalidatePath } from 'next/cache'
 
 export async function deleteCard(id: string) {
   const supabase = await createClient()
-  await supabase.from('cards').delete().eq('id', id)
-  revalidatePath('/cartoes')
+  await supabase
+    .from('cards')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('id', id)
+  revalidatePath('/cards')
 }

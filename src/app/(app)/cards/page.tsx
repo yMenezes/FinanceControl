@@ -6,6 +6,7 @@ export default async function CartoesPage() {
   const { data: cards } = await supabase
     .from('cards')
     .select('*')
+    .is('deleted_at', null)
     .order('created_at', { ascending: true })
 
   return (

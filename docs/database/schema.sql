@@ -24,7 +24,8 @@ create table public.cards (
   due_day       int  not null check (due_day between 1 and 31),
   limit_amount  numeric(12, 2),
   color         text default '#6366f1',         -- hex color for UI
-  created_at    timestamptz default now()
+  created_at    timestamptz default now(),
+  deleted_at    timestamptz default null
 );
 
 -- ──────────────────────────────────────────────────────────────
@@ -37,7 +38,8 @@ create table public.categories (
   name       text not null,
   icon       text default '📦',                -- emoji or icon name
   color      text default '#6366f1',
-  created_at timestamptz default now()
+  created_at timestamptz default now(),
+  deleted_at timestamptz default null
 );
 
 -- ──────────────────────────────────────────────────────────────
@@ -50,7 +52,8 @@ create table public.people (
   user_id      uuid not null references auth.users(id) on delete cascade,
   name         text not null,
   relationship text,                            -- e.g. "Mãe", "Pai", "Amigo"
-  created_at   timestamptz default now()
+  created_at   timestamptz default now(),
+  deleted_at   timestamptz default null
 );
 
 -- ──────────────────────────────────────────────────────────────
