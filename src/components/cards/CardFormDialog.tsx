@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ColorPicker } from "@/components/ui/color-picker";
 
 const BRANDS = [
   "Visa",
@@ -27,14 +28,6 @@ const BRANDS = [
   "American Express",
   "Hipercard",
   "Outro",
-];
-const COLORS = [
-  { label: "Roxo", value: "#820ad1" },
-  { label: "Azul", value: "#003d82" },
-  { label: "Verde", value: "#0f6e56" },
-  { label: "Cinza", value: "#444441" },
-  { label: "Rosa", value: "#993556" },
-  { label: "Coral", value: "#993c1d" },
 ];
 
 type Card = {
@@ -241,23 +234,10 @@ export function CardFormDialog({ open, onClose, card }: Props) {
 
           {/* Cor */}
           <div className="flex flex-col gap-1.5">
-            <Label>Cor do cartão</Label>
-            <div className="flex gap-2">
-              {COLORS.map((c) => (
-                <button
-                  key={c.value}
-                  onClick={() => set("color", c.value)}
-                  className="h-7 w-7 rounded-full transition-transform hover:scale-110"
-                  style={{
-                    background: c.value,
-                    outline:
-                      form.color === c.value ? `2px solid ${c.value}` : "none",
-                    outlineOffset: "2px",
-                  }}
-                  title={c.label}
-                />
-              ))}
-            </div>
+            <ColorPicker
+              value={form.color}
+              onChange={(color) => set("color", color)}
+            />
           </div>
 
           {error && <p className="text-sm text-destructive">{error}</p>}
