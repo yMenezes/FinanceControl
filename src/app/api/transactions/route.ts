@@ -1,19 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
-import { z } from "zod";
+import { transactionCreateSchema } from "@/lib/validations";
 import { generateInstallments } from "@/lib/installments";
-
-const transactionSchema = z.object({
-  description: z.string().min(1, "Descrição obrigatória"),
-  total_amount: z.number().positive("Valor deve ser positivo"),
-  installments_count: z.number().int().min(1).max(24),
-  purchase_date: z.string(),
-  type: z.enum(["credit", "debit", "pix", "cash"]),
-  card_id: z.string().uuid().optional().nullable(),
-  category_id: z.string().uuid().optional().nullable(),
-  person_id: z.string().uuid().optional().nullable(),
-  notes: z.string().optional().nullable(),
-});
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -25,7 +13,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const body = await request.json();
-  const parsed = transactionSchema.safeParse(body);
+  const parsed = transactionCreateSchema.safeParse(body);
 
   if (!parsed.success) {
     return NextResponse.json(

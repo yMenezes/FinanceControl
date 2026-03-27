@@ -1,7 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { cardCreateSchema, cardUpdateSchema, type CardInput, type CardUpdateInput } from "@/lib/validations";
 import {
   Dialog,
   DialogContent,
@@ -48,74 +51,43 @@ type Props = {
 
 export function CardFormDialog({ open, onClose, card }: Props) {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const [form, setForm] = useState({
-    name: card?.name ?? "",
-    brand: card?.brand ?? "",
-    closing_day: card?.closing_day ?? "",
-    due_day: card?.due_day ?? "",
-    limit_amount: card?.limit_amount ?? "",
-    color: card?.color ?? "#820ad1",
+  const isEditing = !!card;
+  
+  const form = useForm<CardInput>({
+    resolver: zodResolver(isEditing ? cardUpdateSchema : cardCreateSchema),
+    defaultValues: {
+      name: "",
+      brand: "",
+      closing_day: 1,
+      due_day: 1,
+      limit_amount: null,
+      color: "#820ad1",
+    },
   });
 
   useEffect(() => {
-    if (open) {
-      setForm({
-        name: card?.name ?? "",
-        brand: card?.brand ?? "",
-        closing_day: card?.closing_day ?? "",
-        due_day: card?.due_day ?? "",
-        limit_amount: card?.limit_amount ?? "",
-        color: card?.color ?? "#820ad1",
+    if (open && card) {
+      form.reset({
+        name: card.name,
+        brand: card.brand ?? "",
+        closing_day: card.closing_day,
+        due_day: card.due_day,
+        limit_amount: card.limit_amount,
+        color: card.color,
       });
-      setError(null);
+    } else if (open) {
+      form.reset({
+        name: "",
+        brand: "",
+        closing_day: 1,
+        due_day: 1,
+        limit_amount: null,
+        color: "#820ad1",
+      });
     }
-  }, [open]);
+  }, [open, card, form]);
 
-  function set(field: string, value: string) {
-    setForm((prev) => ({ ...prev, [field]: value }));
-  }
-
-  async function handleSubmit() {
-    setError(null);
-    setLoading(true);
-
-    // Validações
-    if (!form.name.trim()) {
-      setError("Nome é obrigatório");
-      setLoading(false);
-      return;
-    }
-
-    if (!form.closing_day) {
-      setError("Dia de fechamento é obrigatório");
-      setLoading(false);
-      return;
-    }
-
-    if (!form.due_day) {
-      setError("Dia de vencimento é obrigatório");
-      setLoading(false);
-      return;
-    }
-
-    if (form.limit_amount && Number(form.limit_amount) <= 0) {
-      setError("Limite deve ser maior que zero");
-      setLoading(false);
-      return;
-    }
-
-    const payload = {
-      name: form.name,
-      brand: form.brand || undefined,
-      closing_day: Number(form.closing_day),
-      due_day: Number(form.due_day),
-      limit_amount: form.limit_amount ? Number(form.limit_amount) : null,
-      color: form.color,
-    };
-
+  async function handleSubmit(data: CardInput | CardUpdateInput) {
     try {
       const url = card ? `/api/cards/${card.id}` : "/api/cards";
       const method = card ? "PATCH" : "POST";
@@ -123,25 +95,37 @@ export function CardFormDialog({ open, onClose, card }: Props) {
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(data),
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        setError(data.error ?? "Erro ao salvar cartão");
+        const errorData = await res.json();
+        
+        // Handle Zod validation errors from server
+        if (errorData.error?.fieldErrors) {
+          Object.entries(errorData.error.fieldErrors).forEach(([key, msgs]: [string, any]) => {
+            form.setError(key as any, { message: msgs[0] });
+          });
+          return;
+        }
+
+        form.setError("root", { message: errorData.error ?? "Erro ao salvar cartão" });
         return;
       }
 
       router.refresh();
       onClose();
-    } catch {
-      setError("Erro de conexão");
-    } finally {
-      setLoading(false);
+      form.reset();
+    } catch (err) {
+      form.setError("root", { message: "Erro de conexão" });
     }
   }
 
   const days = Array.from({ length: 31 }, (_, i) => i + 1);
+
+  const onSubmit = form.handleSubmit(handleSubmit);
+  const isLoading = form.formState.isSubmitting;
+  const rootError = form.formState.errors.root?.message;
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -150,26 +134,29 @@ export function CardFormDialog({ open, onClose, card }: Props) {
           <DialogTitle>{card ? "Editar cartão" : "Novo cartão"}</DialogTitle>
         </DialogHeader>
 
-        <div className="flex flex-col gap-4 py-2">
+        <form onSubmit={onSubmit} className="flex flex-col gap-4 py-2">
           {/* Nome */}
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="name">Nome</Label>
             <Input
               id="name"
               placeholder="Ex: Nubank, Itaú Visa..."
-              value={form.name}
-              onChange={(e) => set("name", e.target.value)}
+              {...form.register("name")}
             />
+            {form.formState.errors.name && (
+              <p className="text-sm text-destructive">{form.formState.errors.name.message}</p>
+            )}
           </div>
 
           {/* Bandeira */}
           <div className="flex flex-col gap-1.5">
             <Label>Bandeira</Label>
-            <Select value={form.brand} onValueChange={(v) => set("brand", v)}>
+            <Select value={form.watch("brand") ?? ""} onValueChange={(v) => form.setValue("brand", v)}>
               <SelectTrigger>
                 <SelectValue placeholder="Selecione a bandeira" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="">Sem bandeira</SelectItem>
                 {BRANDS.map((b) => (
                   <SelectItem key={b} value={b}>
                     {b}
@@ -183,10 +170,7 @@ export function CardFormDialog({ open, onClose, card }: Props) {
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <Label>Dia de fechamento</Label>
-              <Select
-                value={String(form.closing_day)}
-                onValueChange={(v) => set("closing_day", v)}
-              >
+              <Select value={String(form.watch("closing_day") ?? "")} onValueChange={(v) => form.setValue("closing_day", Number(v))}>
                 <SelectTrigger>
                   <SelectValue placeholder="Dia" />
                 </SelectTrigger>
@@ -198,13 +182,13 @@ export function CardFormDialog({ open, onClose, card }: Props) {
                   ))}
                 </SelectContent>
               </Select>
+              {form.formState.errors.closing_day && (
+                <p className="text-sm text-destructive">{form.formState.errors.closing_day.message}</p>
+              )}
             </div>
             <div className="flex flex-col gap-1.5">
               <Label>Dia de vencimento</Label>
-              <Select
-                value={String(form.due_day)}
-                onValueChange={(v) => set("due_day", v)}
-              >
+              <Select value={String(form.watch("due_day") ?? "")} onValueChange={(v) => form.setValue("due_day", Number(v))}>
                 <SelectTrigger>
                   <SelectValue placeholder="Dia" />
                 </SelectTrigger>
@@ -216,6 +200,9 @@ export function CardFormDialog({ open, onClose, card }: Props) {
                   ))}
                 </SelectContent>
               </Select>
+              {form.formState.errors.due_day && (
+                <p className="text-sm text-destructive">{form.formState.errors.due_day.message}</p>
+              )}
             </div>
           </div>
 
@@ -227,30 +214,35 @@ export function CardFormDialog({ open, onClose, card }: Props) {
               type="number"
               min="0.01"
               placeholder="Ex: 5000"
-              value={form.limit_amount}
-              onChange={(e) => set("limit_amount", e.target.value)}
+              {...form.register("limit_amount", { valueAsNumber: true })}
             />
+            {form.formState.errors.limit_amount && (
+              <p className="text-sm text-destructive">{form.formState.errors.limit_amount.message}</p>
+            )}
           </div>
 
           {/* Cor */}
           <div className="flex flex-col gap-1.5">
             <ColorPicker
-              value={form.color}
-              onChange={(color) => set("color", color)}
+              value={form.watch("color")}
+              onChange={(color) => form.setValue("color", color)}
             />
+            {form.formState.errors.color && (
+              <p className="text-sm text-destructive">{form.formState.errors.color.message}</p>
+            )}
           </div>
 
-          {error && <p className="text-sm text-destructive">{error}</p>}
-        </div>
+          {rootError && <p className="text-sm text-destructive">{rootError}</p>}
 
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={loading}>
-            Cancelar
-          </Button>
-          <Button onClick={handleSubmit} disabled={loading}>
-            {loading ? "Salvando..." : "Salvar"}
-          </Button>
-        </DialogFooter>
+          <DialogFooter>
+            <Button variant="outline" onClick={onClose} disabled={isLoading}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? "Salvando..." : "Salvar"}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );

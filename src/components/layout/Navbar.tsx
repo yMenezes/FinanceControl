@@ -16,7 +16,7 @@ export function Navbar() {
         size="sm"
         variant="outline"
         className="gap-1.5 text-xs"
-        onClick={open}
+        onClick={() => open()}
       >
         <Plus className="h-3.5 w-3.5" />
         Novo

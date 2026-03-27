@@ -1,15 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import { z } from 'zod'
-
-const cardSchema = z.object({
-  name:         z.string().min(1, 'Nome obrigatório'),
-  brand:        z.string().optional(),
-  closing_day:  z.number().int().min(1).max(31),
-  due_day:      z.number().int().min(1).max(31),
-  limit_amount: z.number().positive().optional().nullable(),
-  color:        z.string().regex(/^#[0-9a-fA-F]{6}$/).default('#6366f1'),
-})
+import { cardCreateSchema } from '@/lib/validations'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -18,7 +9,7 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
   const body = await request.json()
-  const parsed = cardSchema.safeParse(body)
+  const parsed = cardCreateSchema.safeParse(body)
 
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 422 })

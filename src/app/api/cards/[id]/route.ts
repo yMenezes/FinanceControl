@@ -1,18 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
-import { z } from "zod";
-
-const cardSchema = z.object({
-  name: z.string().min(1).optional(),
-  brand: z.string().optional(),
-  closing_day: z.number().int().min(1).max(31).optional(),
-  due_day: z.number().int().min(1).max(31).optional(),
-  limit_amount: z.number().positive().optional().nullable(),
-  color: z
-    .string()
-    .regex(/^#[0-9a-fA-F]{6}$/)
-    .optional(),
-});
+import { cardUpdateSchema } from "@/lib/validations";
 
 export async function PATCH(
   request: Request,
@@ -27,7 +15,7 @@ export async function PATCH(
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const body = await request.json();
-  const parsed = cardSchema.safeParse(body);
+  const parsed = cardUpdateSchema.safeParse(body);
 
   if (!parsed.success) {
     return NextResponse.json(

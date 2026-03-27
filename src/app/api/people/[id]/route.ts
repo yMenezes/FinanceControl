@@ -1,11 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import { z } from 'zod'
-
-const personSchema = z.object({
-  name:         z.string().min(1).optional(),
-  relationship: z.string().optional(),
-})
+import { personUpdateSchema } from '@/lib/validations'
 
 export async function PATCH(
   request: Request,
@@ -17,7 +12,7 @@ export async function PATCH(
   if (!user) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
   const body = await request.json()
-  const parsed = personSchema.safeParse(body)
+  const parsed = personUpdateSchema.safeParse(body)
 
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 422 })

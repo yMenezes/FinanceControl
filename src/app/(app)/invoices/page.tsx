@@ -1,14 +1,18 @@
 import { createClient } from '@/lib/supabase/server'
 import { InvoicePage } from '@/components/invoices/InvoicePage'
 
-export default async function InvoicesPage() {
+export default async function InvoicesPage({
+  searchParams,
+}: {
+  searchParams: { month?: string; year?: string }
+}) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
   const now   = new Date()
-  const month = now.getMonth() + 1
-  const year  = now.getFullYear()
+  const month = Number(searchParams.month ?? now.getMonth() + 1)
+  const year  = Number(searchParams.year  ?? now.getFullYear())
 
   const [installmentsRes, cardsRes] = await Promise.all([
     supabase

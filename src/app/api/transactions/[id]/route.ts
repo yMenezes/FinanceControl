@@ -1,19 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import { z } from 'zod'
+import { transactionUpdateSchema } from '@/lib/validations'
 import { generateInstallments } from '@/lib/installments'
-
-const transactionSchema = z.object({
-  description:        z.string().min(1),
-  total_amount:       z.number().positive(),
-  installments_count: z.number().int().min(1).max(24),
-  purchase_date:      z.string(),
-  type:               z.enum(['credit', 'debit', 'pix', 'cash']),
-  card_id:            z.string().uuid().optional().nullable(),
-  category_id:        z.string().uuid().optional().nullable(),
-  person_id:          z.string().uuid().optional().nullable(),
-  notes:              z.string().optional().nullable(),
-})
 
 export async function PATCH(
   request: Request,
@@ -25,69 +13,107 @@ export async function PATCH(
   if (!user) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
   const body   = await request.json()
-  const parsed = transactionSchema.safeParse(body)
+  const parsed = transactionUpdateSchema.safeParse(body)
 
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 422 })
   }
 
-  const {
-    description, total_amount, installments_count,
-    purchase_date, type, card_id, category_id, person_id, notes
-  } = parsed.data
+  // 0. Fetch transação atual
+  const { data: currentTx, error: fetchError } = await supabase
+    .from('transactions')
+    .select('*')
+    .eq('id', params.id)
+    .eq('user_id', user.id)
+    .single()
 
-  // 1. Atualiza a transação
+  if (fetchError || !currentTx) {
+    return NextResponse.json({ error: 'Transação não encontrada' }, { status: 404 })
+  }
+
+  // Determinar se precisa regenerar parcelas
+  const needsRegenerate =
+    parsed.data.total_amount !== undefined ||
+    parsed.data.installments_count !== undefined ||
+    parsed.data.purchase_date !== undefined ||
+    parsed.data.type !== undefined ||
+    parsed.data.card_id !== undefined
+
+  // 1. Preparar dados para update (pegar valores atuais se não fornecidos)
+  const updateData = {
+    description: parsed.data.description ?? currentTx.description,
+    total_amount: parsed.data.total_amount ?? currentTx.total_amount,
+    installments_count: parsed.data.installments_count ?? currentTx.installments_count,
+    purchase_date: parsed.data.purchase_date ?? currentTx.purchase_date,
+    type: parsed.data.type ?? currentTx.type,
+    card_id: parsed.data.card_id !== undefined ? parsed.data.card_id : currentTx.card_id,
+    category_id: parsed.data.category_id !== undefined ? parsed.data.category_id : currentTx.category_id,
+    person_id: parsed.data.person_id !== undefined ? parsed.data.person_id : currentTx.person_id,
+    notes: parsed.data.notes !== undefined ? parsed.data.notes : currentTx.notes,
+  }
+
+  // 2. Atualiza a transação
   const { error: txError } = await supabase
     .from('transactions')
-    .update({
-      description,
-      total_amount,
-      installments_count,
-      purchase_date,
-      type,
-      card_id:     card_id     ?? null,
-      category_id: category_id ?? null,
-      person_id:   person_id   ?? null,
-      notes:       notes       ?? null,
-    })
+    .update(updateData)
     .eq('id', params.id)
     .eq('user_id', user.id)
 
   if (txError) return NextResponse.json({ error: txError.message }, { status: 500 })
 
-  // 2. Deleta as parcelas antigas
-  const { error: delError } = await supabase
-    .from('installments')
-    .delete()
-    .eq('transaction_id', params.id)
+  // 3. Regenerar parcelas apenas se necessário
+  if (needsRegenerate) {
+    // Fetch parcelas antigas para preservar status paid
+    const { data: oldInstallments } = await supabase
+      .from('installments')
+      .select('number, paid')
+      .eq('transaction_id', params.id)
 
-  if (delError) return NextResponse.json({ error: delError.message }, { status: 500 })
+    const oldPaidNumbers = (oldInstallments ?? [])
+      .filter(i => i.paid)
+      .map(i => i.number)
 
-  // 3. Busca o closing_day do cartão
-  let closingDay = 1
-  if (card_id) {
-    const { data: card } = await supabase
-      .from('cards')
-      .select('closing_day')
-      .eq('id', card_id)
-      .single()
-    if (card) closingDay = card.closing_day
+    // Delete antigas
+    const { error: delError } = await supabase
+      .from('installments')
+      .delete()
+      .eq('transaction_id', params.id)
+
+    if (delError) return NextResponse.json({ error: delError.message }, { status: 500 })
+
+    // Busca o closing_day do cartão (se fornecido ou usar cartão atual)
+    let closingDay = 1
+    const cardId = updateData.card_id
+    if (cardId) {
+      const { data: card } = await supabase
+        .from('cards')
+        .select('closing_day')
+        .eq('id', cardId)
+        .single()
+      if (card) closingDay = card.closing_day
+    }
+
+    // Gera novas parcelas preservando paid status
+    const newInstallments = generateInstallments(
+      params.id,
+      updateData.total_amount,
+      updateData.type === 'credit' ? updateData.installments_count : 1,
+      new Date(updateData.purchase_date),
+      closingDay
+    )
+
+    // Marca como paid se era pago antes (match by number)
+    const installmentsWithPaid = newInstallments.map(i => ({
+      ...i,
+      paid: oldPaidNumbers.includes(i.number),
+    }))
+
+    const { error: instError } = await supabase
+      .from('installments')
+      .insert(installmentsWithPaid)
+
+    if (instError) return NextResponse.json({ error: instError.message }, { status: 500 })
   }
-
-  // 4. Gera e insere as novas parcelas
-  const installments = generateInstallments(
-    params.id,
-    total_amount,
-    type === 'credit' ? installments_count : 1,
-    new Date(purchase_date),
-    closingDay
-  )
-
-  const { error: instError } = await supabase
-    .from('installments')
-    .insert(installments)
-
-  if (instError) return NextResponse.json({ error: instError.message }, { status: 500 })
 
   return NextResponse.json({ success: true })
 }

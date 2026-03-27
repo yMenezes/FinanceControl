@@ -1,11 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import { z } from 'zod'
-
-const personSchema = z.object({
-  name:         z.string().min(1, 'Nome obrigatório'),
-  relationship: z.string().optional(),
-})
+import { personCreateSchema } from '@/lib/validations'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -14,7 +9,7 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
   const body = await request.json()
-  const parsed = personSchema.safeParse(body)
+  const parsed = personCreateSchema.safeParse(body)
 
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 422 })

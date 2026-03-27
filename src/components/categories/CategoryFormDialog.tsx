@@ -1,7 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { categoryCreateSchema, categoryUpdateSchema, type CategoryInput, type CategoryUpdateInput } from "@/lib/validations";
 import {
   Dialog,
   DialogContent,
@@ -44,40 +47,34 @@ type Props = {
 
 export function CategoryFormDialog({ open, onClose, category }: Props) {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const isEditing = !!category;
 
-  const [form, setForm] = useState({
-    name: category?.name ?? "",
-    icon: category?.icon ?? "📦",
-    color: category?.color ?? "#6366f1",
+  const form = useForm<CategoryInput>({
+    resolver: zodResolver(isEditing ? categoryUpdateSchema : categoryCreateSchema),
+    defaultValues: {
+      name: "",
+      icon: "📦",
+      color: "#6366f1",
+    },
   });
 
   useEffect(() => {
-    if (open) {
-      setForm({
-        name: category?.name ?? "",
-        icon: category?.icon ?? "📦",
-        color: category?.color ?? "#6366f1",
+    if (open && category) {
+      form.reset({
+        name: category.name,
+        icon: category.icon,
+        color: category.color,
       });
-      setError(null);
+    } else if (open) {
+      form.reset({
+        name: "",
+        icon: "📦",
+        color: "#6366f1",
+      });
     }
-  }, [open]);
+  }, [open, category, form]);
 
-  function set(field: string, value: string) {
-    setForm((prev) => ({ ...prev, [field]: value }));
-  }
-
-  async function handleSubmit() {
-    setError(null);
-    setLoading(true);
-
-    if (!form.name.trim()) {
-      setError("Nome é obrigatório");
-      setLoading(false);
-      return;
-    }
-
+  async function handleSubmit(data: CategoryInput | CategoryUpdateInput) {
     try {
       const url = category
         ? `/api/categories/${category.id}`
@@ -87,23 +84,34 @@ export function CategoryFormDialog({ open, onClose, category }: Props) {
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify(data),
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        setError(data.error ?? "Erro ao salvar categoria");
+        const errorData = await res.json();
+        
+        if (errorData.error?.fieldErrors) {
+          Object.entries(errorData.error.fieldErrors).forEach(([key, msgs]: [string, any]) => {
+            form.setError(key as any, { message: msgs[0] });
+          });
+          return;
+        }
+
+        form.setError("root", { message: errorData.error ?? "Erro ao salvar categoria" });
         return;
       }
 
       router.refresh();
       onClose();
+      form.reset();
     } catch {
-      setError("Erro de conexão");
-    } finally {
-      setLoading(false);
+      form.setError("root", { message: "Erro de conexão" });
     }
   }
+
+  const onSubmit = form.handleSubmit(handleSubmit);
+  const isLoading = form.formState.isSubmitting;
+  const rootError = form.formState.errors.root?.message;
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -114,16 +122,18 @@ export function CategoryFormDialog({ open, onClose, category }: Props) {
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex flex-col gap-4 py-2">
+        <form onSubmit={onSubmit} className="flex flex-col gap-4 py-2">
           {/* Nome */}
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="name">Nome</Label>
             <Input
               id="name"
               placeholder="Ex: Alimentação, Saúde..."
-              value={form.name}
-              onChange={(e) => set("name", e.target.value)}
+              {...form.register("name")}
             />
+            {form.formState.errors.name && (
+              <p className="text-sm text-destructive">{form.formState.errors.name.message}</p>
+            )}
           </div>
 
           {/* Ícone */}
@@ -133,9 +143,10 @@ export function CategoryFormDialog({ open, onClose, category }: Props) {
               {ICONS.map((icon) => (
                 <button
                   key={icon}
-                  onClick={() => set("icon", icon)}
+                  type="button"
+                  onClick={() => form.setValue("icon", icon)}
                   className={`flex h-9 w-9 items-center justify-center rounded-lg border text-lg transition-colors ${
-                    form.icon === icon
+                    form.watch("icon") === icon
                       ? "border-primary bg-accent"
                       : "border-border hover:bg-accent"
                   }`}
@@ -149,22 +160,25 @@ export function CategoryFormDialog({ open, onClose, category }: Props) {
           {/* Cor */}
           <div className="flex flex-col gap-1.5">
             <ColorPicker
-              value={form.color}
-              onChange={(color) => set("color", color)}
+              value={form.watch("color")}
+              onChange={(color) => form.setValue("color", color)}
             />
+            {form.formState.errors.color && (
+              <p className="text-sm text-destructive">{form.formState.errors.color.message}</p>
+            )}
           </div>
 
-          {error && <p className="text-sm text-destructive">{error}</p>}
-        </div>
+          {rootError && <p className="text-sm text-destructive">{rootError}</p>}
 
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={loading}>
-            Cancelar
-          </Button>
-          <Button onClick={handleSubmit} disabled={loading}>
-            {loading ? "Salvando..." : "Salvar"}
-          </Button>
-        </DialogFooter>
+          <DialogFooter>
+            <Button variant="outline" onClick={onClose} disabled={isLoading}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? "Salvando..." : "Salvar"}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );

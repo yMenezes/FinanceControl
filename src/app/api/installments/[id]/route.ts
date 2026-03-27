@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { installmentUpdateSchema } from '@/lib/validations'
 
 export async function PATCH(
   request: Request,
@@ -9,7 +10,14 @@ export async function PATCH(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
-  const { paid } = await request.json()
+  const body = await request.json()
+  const parsed = installmentUpdateSchema.safeParse(body)
+
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.flatten() }, { status: 422 })
+  }
+
+  const { paid } = parsed.data
 
   // Verifica se a parcela pertence ao usuário via join
   const { data: installment } = await supabase

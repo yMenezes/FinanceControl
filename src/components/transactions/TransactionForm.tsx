@@ -25,30 +25,16 @@ type Category = { id: string; name: string; icon: string };
 type Person = { id: string; name: string };
 
 type Props = {
-  onSuccess:    () => void
-  transaction?: TransactionData | null
-  cards:        { id: string; name: string; closing_day: number }[]
-  categories:   { id: string; name: string; icon: string }[]
-  people:       { id: string; name: string }[]
-}
-
-type TransactionData = {
-  id: string;
-  description: string;
-  total_amount: number;
-  installments_count: number;
-  purchase_date: string;
-  type: string;
-  notes: string | null;
-  cards: { id: string } | null;
-  categories: { id: string } | null;
-  people: { id: string } | null;
+  onSuccess: () => void;
 };
 
-export function TransactionForm({ onSuccess, transaction, cards, categories, people }: Props) {
+export function TransactionForm({ onSuccess }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [cards, setCards] = useState<Card[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [people, setPeople] = useState<Person[]>([]);
   const [cents, setCents] = useState(0);
 
   const [form, setForm] = useState({
@@ -64,32 +50,38 @@ export function TransactionForm({ onSuccess, transaction, cards, categories, peo
 
   // Reset ao montar o componente (toda vez que o painel abre)
   useEffect(() => {
-    if (transaction) {
-      setCents(Math.round(transaction.total_amount * 100));
-      setForm({
-        description: transaction.description,
-        installments_count: String(transaction.installments_count),
-        purchase_date: transaction.purchase_date,
-        type: transaction.type,
-        card_id: transaction.cards?.id ?? "",
-        category_id: transaction.categories?.id ?? "",
-        person_id: transaction.people?.id ?? "",
-        notes: transaction.notes ?? "",
-      });
-    } else {
-      setCents(0);
-      setForm({
-        description: "",
-        installments_count: "1",
-        purchase_date: new Date().toISOString().split("T")[0],
-        type: "credit",
-        card_id: "",
-        category_id: "",
-        person_id: "",
-        notes: "",
-      });
+    setCents(0);
+    setForm({
+      description: "",
+      installments_count: "1",
+      purchase_date: new Date().toISOString().split("T")[0],
+      type: "credit",
+      card_id: "",
+      category_id: "",
+      person_id: "",
+      notes: "",
+    });
+  }, []);
+
+  // Carrega os dados de apoio ao abrir o painel
+  useEffect(() => {
+    async function load() {
+      const [cardsRes, catsRes, peopleRes] = await Promise.all([
+        fetch("/api/cards"),
+        fetch("/api/categories"),
+        fetch("/api/people"),
+      ]);
+      const [cardsData, catsData, peopleData] = await Promise.all([
+        cardsRes.json(),
+        catsRes.json(),
+        peopleRes.json(),
+      ]);
+      setCards(cardsData);
+      setCategories(catsData);
+      setPeople(peopleData);
     }
-  }, [transaction]);
+    load();
+  }, []);
 
   function set(field: string, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -127,13 +119,8 @@ export function TransactionForm({ onSuccess, transaction, cards, categories, peo
     }
 
     try {
-      const url = transaction
-        ? `/api/transactions/${transaction.id}`
-        : "/api/transactions";
-      const method = transaction ? "PATCH" : "POST";
-
-      const res = await fetch(url, {
-        method,
+      const res = await fetch("/api/transactions", {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           description: form.description,
@@ -362,11 +349,7 @@ export function TransactionForm({ onSuccess, transaction, cards, categories, peo
           Cancelar
         </Button>
         <Button onClick={handleSubmit} disabled={loading}>
-          {loading
-            ? "Salvando..."
-            : transaction
-              ? "Salvar alterações"
-              : "Salvar lançamento"}
+          {loading ? "Salvando..." : "Salvar lançamento"}
         </Button>
       </div>
     </div>
