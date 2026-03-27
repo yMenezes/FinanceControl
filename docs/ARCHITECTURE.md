@@ -207,26 +207,118 @@ export function getFirstInstallmentMonth(
 
 All form inputs are validated with **Zod schemas** defined in `lib/validations.ts`. The same schema is used on both the client (React Hook Form) and the server (API Route), so there's no duplication.
 
+### Schema Design
+
+Schemas are defined once and exported with separate variants for CREATE and UPDATE operations:
+
 ```ts
-// lib/validations.ts
-export const transactionSchema = z.object({
-  description:        z.string().min(1, 'Description is required'),
-  total_amount:       z.number().positive('Amount must be positive'),
-  installments_count: z.number().int().min(1).max(24),
-  purchase_date:      z.string().datetime(),
-  card_id:            z.string().uuid(),
-  category_id:        z.string().uuid().optional(),
-  person_id:          z.string().uuid().optional(),
+// lib/validations.ts — Single source of truth
+
+// CREATE schema (all required fields)
+export const cardCreateSchema = z.object({
+  name: z.string().min(1, 'Nome obrigatório'),
+  brand: z.string().optional(),
+  closing_day: z.number().int().min(1).max(31, 'Fechamento deve ser 1-31'),
+  due_day: z.number().int().min(1).max(31, 'Vencimento deve ser 1-31'),
+  limit_amount: z.number().positive('Limite deve ser positivo').optional().nullable(),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Cor deve ser hex válida').default('#6366f1'),
 })
 
-export type TransactionInput = z.infer<typeof transactionSchema>
+// UPDATE schema (all optional fields using .partial())
+export const cardUpdateSchema = cardCreateSchema.partial()
+
+// Types automatically derived from schemas
+export type CardInput = z.infer<typeof cardCreateSchema>
+export type CardUpdateInput = z.infer<typeof cardUpdateSchema>
 ```
 
-Benefits:
-- **Single source of truth** for validation rules
-- TypeScript types are inferred automatically from the schema
-- Client-side errors appear instantly (no round trip needed)
-- Server-side validation prevents malformed data even if someone bypasses the form
+### Client-Side Validation
+
+Forms use **React Hook Form** with Zod resolver for type-safe, performant validation:
+
+```tsx
+'use client'
+
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { cardCreateSchema, type CardInput } from '@/lib/validations'
+
+export function CardFormDialog() {
+  const form = useForm<CardInput>({
+    resolver: zodResolver(cardCreateSchema),
+    defaultValues: { name: '', closing_day: 1, ... }
+  })
+
+  // Per-field errors automatically display
+  form.formState.errors.closing_day?.message // "Fechamento deve ser 1-31"
+}
+```
+
+### Server-Side Validation
+
+All API Routes validate with the same schema before touching the database:
+
+```ts
+// app/api/cards/route.ts
+
+import { cardCreateSchema } from '@/lib/validations'
+
+export async function POST(request: Request) {
+  const body = await request.json()
+  const parsed = cardCreateSchema.safeParse(body)
+
+  if (!parsed.success) {
+    // Return field-level errors to client
+    return NextResponse.json(
+      { error: parsed.error.flatten().fieldErrors },
+      { status: 422 }
+    )
+  }
+
+  // Insert with validated data
+  const { data, error } = await supabase
+    .from('cards')
+    .insert({ ...parsed.data, user_id: user.id })
+    .select()
+    .single()
+}
+```
+
+### Benefits
+
+- **Single source of truth** — Validation rules defined once, used everywhere
+- **Type safety** — `z.infer<>` generates TypeScript types automatically
+- **Instant feedback** — Client-side validation shows errors before network request
+- **Defense in depth** — Server-side validation prevents malformed data even if client bypasses form
+- **Consistent UX** — Same error messages client and server
+- **Per-field errors** — Users see exactly which field is invalid and why (not just "Error saving")
+
+### Smart Update Logic
+
+When editing resources, PATCH endpoints only regenerate expensive operations (like installments) if relevant fields changed:
+
+```ts
+// app/api/transactions/[id]/route.ts
+
+const needsRegenerate =
+  parsed.data.total_amount !== undefined ||
+  parsed.data.installments_count !== undefined ||
+  parsed.data.purchase_date !== undefined ||
+  parsed.data.type !== undefined
+
+if (needsRegenerate) {
+  // Preserve paid status from old installments when regenerating
+  const oldPaidNumbers = oldInstallments.filter(i => i.paid).map(i => i.number)
+  
+  const newInstallments = generateInstallments(...)
+  const withPaid = newInstallments.map(i => ({
+    ...i,
+    paid: oldPaidNumbers.includes(i.number) // Match by number
+  }))
+}
+```
+
+This ensures that editing a transaction's description doesn't destroy the payment history of its installments.
 
 ---
 
