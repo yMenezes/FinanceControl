@@ -1,8 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { TransactionList } from '@/components/transactions/TransactionList'
 import { TransactionFilters } from '@/components/transactions/TransactionFilters'
 import { TransactionDataProvider } from '@/providers/TransactionDataProvider'
+import { TransactionListSkeleton } from '@/components/transactions/TransactionListSkeleton'
 
 type SearchParams = {
   month?:       string
@@ -13,11 +15,7 @@ type SearchParams = {
   type?:        string
 }
 
-export default async function TransactionsPage({
-  searchParams,
-}: {
-  searchParams: SearchParams
-}) {
+async function TransactionContent({ searchParams }: { searchParams: SearchParams }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
@@ -78,5 +76,17 @@ export default async function TransactionsPage({
         <TransactionList transactions={(transactions ?? []) as any} />
       </div>
     </TransactionDataProvider>
+  )
+}
+
+export default async function TransactionsPage({
+  searchParams,
+}: {
+  searchParams: SearchParams
+}) {
+  return (
+    <Suspense fallback={<TransactionListSkeleton />}>
+      <TransactionContent searchParams={searchParams} />
+    </Suspense>
   )
 }

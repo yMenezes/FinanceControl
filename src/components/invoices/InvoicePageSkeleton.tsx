@@ -2,7 +2,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 export function InvoicePageSkeleton() {
   return (
-    <div className="flex flex-col gap-6">
+    <div className="mx-auto max-w-2xl">
       {/* Header with month navigation */}
       <div className="flex items-center justify-between gap-4">
         <Skeleton className="h-6 w-32" />
