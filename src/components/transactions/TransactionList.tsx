@@ -1,10 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { deleteTransaction } from "@/lib/actions/transactions";
 import { useTransactionPanel } from "@/providers/TransactionPanelProvider";
 
@@ -22,6 +22,15 @@ type Transaction = {
   cards:              { id: string; name: string; color: string } | null
   categories:         { id: string; name: string; icon: string; color: string } | null
   people:             { id: string; name: string } | null
+};
+
+type TransactionListProps = {
+  month: string;
+  year: string;
+  cardId?: string;
+  categoryId?: string;
+  personId?: string;
+  type?: string;
 };
 
 const TYPE_LABELS: Record<string, { label: string; className: string }> = {
@@ -61,19 +70,80 @@ function formatDate(dateStr: string) {
 }
 
 export function TransactionList({
-  transactions,
-}: {
-  transactions: Transaction[];
-}) {
+  month,
+  year,
+  cardId,
+  categoryId,
+  personId,
+  type,
+}: TransactionListProps) {
   const router = useRouter();
+  const [page, setPage] = useState(1);
+  const [refreshVersion, setRefreshVersion] = useState(0);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, hasMore: false });
   const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null);
-  const { open } = useTransactionPanel();
+  const { open, onRefresh, refresh } = useTransactionPanel();
+
+  // Fetch transações com useCallback para poder refazer depois
+  const fetchTransactions = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      params.append('month', month);
+      params.append('year', year);
+      params.append('page', String(page));
+      params.append('limit', '10');
+      
+      if (cardId) params.append('card_id', cardId);
+      if (categoryId) params.append('category_id', categoryId);
+      if (personId) params.append('person_id', personId);
+      if (type) params.append('type', type);
+
+      const response = await fetch(`/api/transactions?${params.toString()}`);
+      const result = await response.json();
+      
+      setTransactions(result.data || []);
+      setPagination(result.pagination || { page: 1, limit: 10, total: 0, hasMore: false });
+    } catch (error) {
+      console.error('Erro ao buscar transações:', error);
+      setTransactions([]);
+      setPagination({ page: 1, limit: 10, total: 0, hasMore: false });
+    } finally {
+      setLoading(false);
+    }
+  }, [month, year, page, cardId, categoryId, personId, type]);
+
+  // Registrar função de refetch no painel
+  useEffect(() => {
+    onRefresh(() => {
+      setPage(1);
+      setRefreshVersion(v => v + 1);
+    });
+  }, [onRefresh]);
+
+  // Buscar transações quando page, filtros ou refreshVersion mudam
+  useEffect(() => {
+    fetchTransactions();
+  }, [fetchTransactions, refreshVersion]);
 
   async function handleDelete() {
     if (!deleteTarget) return;
     await deleteTransaction(deleteTarget.id);
     setDeleteTarget(null);
     router.refresh();
+    refresh();
+  }
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mb-3" />
+        <p className="text-sm text-muted-foreground">Carregando lançamentos...</p>
+      </div>
+    );
   }
 
   if (transactions.length === 0) {
@@ -107,7 +177,7 @@ export function TransactionList({
               currency: "BRL",
             }),
           },
-          { label: "Lançamentos", value: transactions.length },
+          { label: "Lançamentos", value: pagination.total },
           {
             label: "Média por compra",
             value: average.toLocaleString("pt-BR", {
@@ -232,6 +302,33 @@ export function TransactionList({
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Paginação */}
+      <div className="flex items-center justify-between mt-6 pt-6 border-t border-border">
+        <div className="text-xs text-muted-foreground">
+          Página {pagination.page} de {Math.ceil(pagination.total / pagination.limit) || 1}
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page === 1}
+          >
+            <ChevronLeft className="h-4 w-4 mr-1" />
+            Anterior
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage((p) => p + 1)}
+            disabled={!pagination.hasMore}
+          >
+            Próxima
+            <ChevronRight className="h-4 w-4 ml-1" />
+          </Button>
+        </div>
       </div>
 
       <DeleteDialog

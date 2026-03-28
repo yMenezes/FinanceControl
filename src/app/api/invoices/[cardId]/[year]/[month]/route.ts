@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server'
 type Params = { cardId: string; year: string; month: string }
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Params }
 ) {
   const supabase = await createClient()
@@ -13,6 +13,25 @@ export async function GET(
 
   const { cardId, year, month } = params
   const isAll = cardId === 'all'
+
+  // Paginação
+  const { searchParams } = new URL(request.url)
+  const page = Math.max(1, parseInt(searchParams.get('page') ?? '1'))
+  const limit = Math.max(1, Math.min(100, parseInt(searchParams.get('limit') ?? '20')))
+  const offset = (page - 1) * limit
+
+  // Busca total de parcelas
+  let countQuery = supabase
+    .from('installments')
+    .select('id', { count: 'exact', head: true })
+    .eq('reference_month', Number(month))
+    .eq('reference_year',  Number(year))
+
+  if (!isAll) {
+    countQuery = countQuery.eq('transactions.card_id', cardId)
+  }
+
+  const { count: total } = await countQuery
 
   // Busca parcelas do mês com dados da transação
   let query = supabase
@@ -37,13 +56,14 @@ export async function GET(
     `)
     .eq('reference_month', Number(month))
     .eq('reference_year',  Number(year))
+    .order('created_at', { ascending: true })
 
   // Filtra por cartão se não for "all"
   if (!isAll) {
     query = query.eq('transactions.card_id', cardId)
   }
 
-  const { data, error } = await query
+  const { data, error } = await query.range(offset, offset + limit - 1)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
@@ -52,7 +72,18 @@ export async function GET(
     (i: any) => i.transactions?.cards || isAll
   )
 
-  return NextResponse.json(filtered)
+  const totalCount = total ?? 0
+  const hasMore = (page * limit) < totalCount
+
+  return NextResponse.json({
+    data: filtered,
+    pagination: {
+      page,
+      limit,
+      total: totalCount,
+      hasMore,
+    },
+  })
 }
 
 // Marcar todas as parcelas do mês/cartão como pagas ou não pagas

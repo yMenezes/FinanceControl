@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState } from 'react'
+import { createContext, useContext, useState, useCallback } from 'react'
 
 type Transaction = {
   id:                 string
@@ -24,6 +24,8 @@ type TransactionPanelContextType = {
   mode:        'create' | 'edit'
   open:        (transaction?: Transaction) => void
   close:       () => void
+  onRefresh:   (callback: () => void) => void
+  refresh:     () => void
 }
 
 const TransactionPanelContext = createContext<TransactionPanelContextType | null>(null)
@@ -32,6 +34,7 @@ export function TransactionPanelProvider({ children }: { children: React.ReactNo
   const [isOpen, setIsOpen]           = useState(false)
   const [transaction, setTransaction] = useState<Transaction | null>(null)
   const [mode, setMode]               = useState<'create' | 'edit'>('create')
+  const [refreshCallback, setRefreshCallback] = useState<(() => void) | null>(null)
 
   function open(transaction?: Transaction) {
     if (transaction) {
@@ -50,8 +53,16 @@ export function TransactionPanelProvider({ children }: { children: React.ReactNo
     setMode('create')
   }
 
+  const onRefresh = useCallback((callback: () => void) => {
+    setRefreshCallback(() => callback)
+  }, [])
+
+  const refresh = useCallback(() => {
+    refreshCallback?.()
+  }, [refreshCallback])
+
   return (
-    <TransactionPanelContext.Provider value={{ isOpen, transaction, mode, open, close }}>
+    <TransactionPanelContext.Provider value={{ isOpen, transaction, mode, open, close, onRefresh, refresh }}>
       {children}
     </TransactionPanelContext.Provider>
   )

@@ -24,40 +24,8 @@ async function TransactionContent({ searchParams }: { searchParams: SearchParams
   const month = searchParams.month ?? String(now.getMonth() + 1)
   const year  = searchParams.year  ?? String(now.getFullYear())
 
-  // Query de transações com filtros
-  let query = supabase
-    .from('transactions')
-    .select(`
-      id,
-      description,
-      total_amount,
-      installments_count,
-      purchase_date,
-      type,
-      notes,
-      card_id,
-      category_id,
-      person_id,
-      cards       ( id, name, color ),
-      categories  ( id, name, icon, color ),
-      people      ( id, name )
-    `)
-    .eq('user_id', user.id)
-    .is('deleted_at', null)
-    .order('purchase_date', { ascending: false })
-
-  if (searchParams.card_id)     query = query.eq('card_id',     searchParams.card_id)
-  if (searchParams.category_id) query = query.eq('category_id', searchParams.category_id)
-  if (searchParams.person_id)   query = query.eq('person_id',   searchParams.person_id)
-  if (searchParams.type)        query = query.eq('type',        searchParams.type)
-
-  const from = `${year}-${month.padStart(2, '0')}-01`
-  const to   = new Date(Number(year), Number(month), 0).toISOString().split('T')[0]
-  query = query.gte('purchase_date', from).lte('purchase_date', to)
-
-  // Busca paralela
-  const [{ data: transactions }, cardsRes, catsRes, peopleRes] = await Promise.all([
-    query,
+  // Buscar dados de referência (cards, categories, people) em paralelo
+  const [cardsRes, catsRes, peopleRes] = await Promise.all([
     supabase.from('cards').select('id, name').is('deleted_at', null).eq('user_id', user.id),
     supabase.from('categories').select('id, name, icon').is('deleted_at', null).eq('user_id', user.id),
     supabase.from('people').select('id, name').is('deleted_at', null).eq('user_id', user.id),
@@ -76,7 +44,14 @@ async function TransactionContent({ searchParams }: { searchParams: SearchParams
           categories={catsRes.data ?? []}
           people={peopleRes.data ?? []}
         />
-        <TransactionList transactions={(transactions ?? []) as any} />
+        <TransactionList 
+          month={month}
+          year={year}
+          cardId={searchParams.card_id}
+          categoryId={searchParams.category_id}
+          personId={searchParams.person_id}
+          type={searchParams.type}
+        />
       </div>
     </TransactionDataProvider>
   )

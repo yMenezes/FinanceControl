@@ -36,7 +36,7 @@ type Props = {
 
 export function TransactionForm({ onSuccess }: Props) {
   const router = useRouter();
-  const { transaction, mode, close } = useTransactionPanel();
+  const { transaction, mode, close, refresh } = useTransactionPanel();
   const contextData = useTransactionData();
   const fetchedRef = useRef(false);
   const [localData, setLocalData] = useState({
@@ -119,7 +119,7 @@ export function TransactionForm({ onSuccess }: Props) {
         description: transaction.description,
         total_amount: transaction.total_amount,
         installments_count: transaction.installments_count,
-        purchase_date: transaction.purchase_date,
+        purchase_date: transaction.purchase_date.split('T')[0],
         type: transaction.type as any,
         card_id: transaction.card_id,
         category_id: transaction.category_id,
@@ -189,6 +189,7 @@ export function TransactionForm({ onSuccess }: Props) {
       }
 
       router.refresh();
+      refresh();
       onSuccess();
     } catch {
       form.setError("root", { message: "Erro de conexão" });

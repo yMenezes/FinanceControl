@@ -16,36 +16,18 @@ export default async function InvoicesPage({
   const month = Number(searchParams.month ?? now.getMonth() + 1)
   const year  = Number(searchParams.year  ?? now.getFullYear())
 
-  const [installmentsRes, cardsRes] = await Promise.all([
-    supabase
-      .from('installments')
-      .select(`
-        id, number, amount, paid,
-        transactions!inner (
-          id, description, installments_count,
-          purchase_date, type, card_id,
-          cards      ( id, name, color, closing_day, due_day ),
-          categories ( id, name, icon, color )
-        )
-      `)
-      .eq('reference_month', month)
-      .eq('reference_year',  year)
-      .eq('transactions.user_id', user.id)
-      .order('created_at', { ascending: true }),
-
-    supabase
-      .from('cards')
-      .select('id, name, color')
-      .is('deleted_at', null)
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: true }),
-  ])
+  // Buscar apenas os cartões do usuário (dados de referência for os filtros)
+  const { data: cardsData } = await supabase
+    .from('cards')
+    .select('id, name, color')
+    .is('deleted_at', null)
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: true })
 
   return (
     <Suspense fallback={<InvoicePageSkeleton />}>
       <InvoicePage
-        initialInstallments={(installmentsRes.data ?? []) as any}
-        cards={cardsRes.data ?? []}
+        cards={cardsData ?? []}
         month={month}
         year={year}
       />

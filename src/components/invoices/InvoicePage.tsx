@@ -44,7 +44,6 @@ type Card = { id: string; name: string; color: string };
 type GroupMode = "category" | "date";
 
 type Props = {
-  initialInstallments: Installment[];
   cards: Card[];
   month: number;
   year: number;
@@ -66,17 +65,14 @@ const MONTHS = [
 ];
 
 export function InvoicePage({
-  initialInstallments,
   cards,
   month,
   year,
 }: Props) {
-  const [installments, setInstallments] = useState(initialInstallments);
-
-  useEffect(() => {
-    setInstallments(initialInstallments);
-  }, [initialInstallments]);
-
+  const [page, setPage] = useState(1);
+  const [installments, setInstallments] = useState<Installment[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, hasMore: false });
   const [activeCard, setActiveCard] = useState<string>("all");
   const [groupMode, setGroupMode] = useState<GroupMode>("category");
   const currentMonth = month;
@@ -84,6 +80,36 @@ export function InvoicePage({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+
+  // Fetch parcelas com paginação
+  const fetchInstallments = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(
+        `/api/invoices/${activeCard}/${currentYear}/${currentMonth}?page=${page}&limit=20`
+      );
+      const result = await response.json();
+
+      setInstallments(result.data || []);
+      setPagination(result.pagination || { page: 1, limit: 20, total: 0, hasMore: false });
+    } catch (error) {
+      console.error("Erro ao buscar parcelas:", error);
+      setInstallments([]);
+      setPagination({ page: 1, limit: 20, total: 0, hasMore: false });
+    } finally {
+      setLoading(false);
+    }
+  }, [activeCard, currentMonth, currentYear, page]);
+
+  // Buscar parcelas quando mês/ano/cartão/page mudam
+  useEffect(() => {
+    fetchInstallments();
+  }, [fetchInstallments]);
+
+  // Reset página ao mudar cartão
+  useEffect(() => {
+    setPage(1);
+  }, [activeCard, currentMonth, currentYear]);
 
   function prevMonth() {
     const params = new URLSearchParams(searchParams.toString());
@@ -109,14 +135,9 @@ export function InvoicePage({
     router.push(`${pathname}?${params.toString()}`);
   }
 
-  // Filtra por cartão ativo
-  const filtered = installments.filter(
-    (i) => activeCard === "all" || i.transactions.card_id === activeCard,
-  );
-
   // Total da fatura filtrada
-  const total = filtered.reduce((acc, i) => acc + i.amount, 0);
-  const totalPaid = filtered
+  const total = installments.reduce((acc, i) => acc + i.amount, 0);
+  const totalPaid = installments
     .filter((i) => i.paid)
     .reduce((acc, i) => acc + i.amount, 0);
 
@@ -127,7 +148,7 @@ export function InvoicePage({
       { label: string; icon?: string; color?: string; items: Installment[] }
     > = {};
 
-    for (const inst of filtered) {
+    for (const inst of installments) {
       let key: string;
       let label: string;
       let icon: string | undefined;
@@ -166,15 +187,11 @@ export function InvoicePage({
 
   // Marcar fatura inteira como paga
   async function markAllPaid() {
-    const allPaid = filtered.every((i) => i.paid);
+    const allPaid = installments.every((i) => i.paid);
     const next = !allPaid;
 
     setInstallments((prev) =>
-      prev.map((i) =>
-        activeCard === "all" || i.transactions.card_id === activeCard
-          ? { ...i, paid: next }
-          : i,
-      ),
+      prev.map((i) => ({ ...i, paid: next })),
     );
 
     await fetch(`/api/invoices/${activeCard}/${currentYear}/${currentMonth}`, {
@@ -184,9 +201,21 @@ export function InvoicePage({
     });
   }
 
-  const allPaid = filtered.length > 0 && filtered.every((i) => i.paid);
+  const allPaid = installments.length > 0 && installments.every((i) => i.paid);
   const groups = groupInstallments();
   const activeCardData = cards.find((c) => c.id === activeCard);
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-2xl">
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mb-3" />
+          <p className="text-sm text-muted-foreground">Carregando fatura...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -216,7 +245,10 @@ export function InvoicePage({
         {cards.map((card) => (
           <button
             key={card.id}
-            onClick={() => setActiveCard(card.id)}
+            onClick={() => {
+              setActiveCard(card.id);
+              setPage(1);
+            }}
             className="flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-all"
             style={
               activeCard === card.id
@@ -239,7 +271,10 @@ export function InvoicePage({
           </button>
         ))}
         <button
-          onClick={() => setActiveCard("all")}
+          onClick={() => {
+            setActiveCard("all");
+            setPage(1);
+          }}
           className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-all ${
             activeCard === "all"
               ? "bg-foreground text-background border-foreground"
@@ -266,7 +301,7 @@ export function InvoicePage({
           <p
             className={`text-xs mt-0.5 ${activeCardData ? "text-white/70" : "text-muted-foreground"}`}
           >
-            {filtered.length} lançamento{filtered.length !== 1 ? "s" : ""}
+            {installments.length} lançamento{installments.length !== 1 ? "s" : ""}
             {totalPaid > 0 &&
               ` · ${totalPaid.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} pago`}
           </p>
@@ -322,7 +357,7 @@ export function InvoicePage({
           variant={allPaid ? "outline" : "default"}
           className="gap-1.5 text-xs h-8"
           onClick={markAllPaid}
-          disabled={filtered.length === 0}
+          disabled={installments.length === 0}
         >
           <CheckCheck className="h-3.5 w-3.5" />
           {allPaid ? "Desmarcar fatura" : "Marcar como paga"}
@@ -330,66 +365,95 @@ export function InvoicePage({
       </div>
 
       {/* Lista agrupada */}
-      {filtered.length === 0 ? (
+      {installments.length === 0 ? (
         <div className="flex items-center justify-center py-20">
           <p className="text-sm text-muted-foreground">
             Nenhum lançamento nesta fatura
           </p>
         </div>
       ) : (
-        <div className="flex flex-col gap-3">
-          {groups.map((group, idx) => {
-            const groupTotal = group.items.reduce(
-              (acc, i) => acc + i.amount,
-              0,
-            );
-            return (
-              <div
-                key={idx}
-                className="rounded-xl border border-border overflow-hidden"
-              >
-                {/* Header do grupo */}
-                <div className="flex items-center justify-between bg-muted px-4 py-2.5">
-                  <div className="flex items-center gap-2">
-                    {group.icon && (
-                      <span
-                        className="flex h-6 w-6 items-center justify-center rounded-md text-sm"
-                        style={{
-                          background: group.color
-                            ? group.color + "22"
-                            : undefined,
-                        }}
-                      >
-                        {group.icon}
-                      </span>
-                    )}
-                    <span className="text-xs font-medium">{group.label}</span>
+        <>
+          <div className="flex flex-col gap-3 mb-6">
+            {groups.map((group, idx) => {
+              const groupTotal = group.items.reduce(
+                (acc, i) => acc + i.amount,
+                0,
+              );
+              return (
+                <div
+                  key={idx}
+                  className="rounded-xl border border-border overflow-hidden"
+                >
+                  {/* Header do grupo */}
+                  <div className="flex items-center justify-between bg-muted px-4 py-2.5">
+                    <div className="flex items-center gap-2">
+                      {group.icon && (
+                        <span
+                          className="flex h-6 w-6 items-center justify-center rounded-md text-sm"
+                          style={{
+                            background: group.color
+                              ? group.color + "22"
+                              : undefined,
+                          }}
+                        >
+                          {group.icon}
+                        </span>
+                      )}
+                      <span className="text-xs font-medium">{group.label}</span>
+                    </div>
+                    <span className="text-xs font-medium">
+                      {groupTotal.toLocaleString("pt-BR", {
+                        style: "currency",
+                        currency: "BRL",
+                      })}
+                    </span>
                   </div>
-                  <span className="text-xs font-medium">
-                    {groupTotal.toLocaleString("pt-BR", {
-                      style: "currency",
-                      currency: "BRL",
-                    })}
-                  </span>
-                </div>
 
-                {/* Linhas */}
-                {group.items.map((inst) => (
-                  <InvoiceInstallmentRow
-                    key={inst.id}
-                    id={inst.id}
-                    description={inst.transactions.description}
-                    number={inst.number}
-                    installmentsCount={inst.transactions.installments_count}
-                    amount={inst.amount}
-                    paid={inst.paid}
-                    onToggle={handleToggle}
-                  />
-                ))}
-              </div>
-            );
-          })}
-        </div>
+                  {/* Linhas */}
+                  {group.items.map((inst) => (
+                    <InvoiceInstallmentRow
+                      key={inst.id}
+                      id={inst.id}
+                      description={inst.transactions.description}
+                      number={inst.number}
+                      installmentsCount={inst.transactions.installments_count}
+                      amount={inst.amount}
+                      paid={inst.paid}
+                      onToggle={handleToggle}
+                    />
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Paginação */}
+          <div className="flex items-center justify-between pt-6 border-t border-border">
+            <div className="text-xs text-muted-foreground">
+              Página {pagination.page} de {Math.ceil(pagination.total / pagination.limit) || 1}
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" />
+                Anterior
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => p + 1)}
+                disabled={!pagination.hasMore}
+              >
+                Próxima
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

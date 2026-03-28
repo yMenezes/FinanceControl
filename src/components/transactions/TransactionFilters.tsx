@@ -47,14 +47,18 @@ export function TransactionFilters({ cards, categories, people }: Props) {
 
   function prevMonth() {
     const d = new Date(year, month - 2)
-    updateParam('month', String(d.getMonth() + 1))
-    updateParam('year',  String(d.getFullYear()))
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('month', String(d.getMonth() + 1))
+    params.set('year', String(d.getFullYear()))
+    router.push(`${pathname}?${params.toString()}`)
   }
 
   function nextMonth() {
     const d = new Date(year, month)
-    updateParam('month', String(d.getMonth() + 1))
-    updateParam('year',  String(d.getFullYear()))
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('month', String(d.getMonth() + 1))
+    params.set('year', String(d.getFullYear()))
+    router.push(`${pathname}?${params.toString()}`)
   }
 
   return (
