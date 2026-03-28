@@ -35,6 +35,9 @@ async function TransactionContent({ searchParams }: { searchParams: SearchParams
       purchase_date,
       type,
       notes,
+      card_id,
+      category_id,
+      person_id,
       cards       ( id, name, color ),
       categories  ( id, name, icon, color ),
       people      ( id, name )

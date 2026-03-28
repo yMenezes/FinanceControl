@@ -112,21 +112,36 @@ export function TransactionForm({ onSuccess }: Props) {
     loadData();
   }, [contextData.cards.length]);
 
-  // Only reset form to defaults, no pre-fill
+  // Reset form to defaults or pre-fill with transaction data in edit mode
   useEffect(() => {
-    form.reset({
-      description: "",
-      total_amount: 0,
-      installments_count: 1,
-      purchase_date: new Date().toISOString().split("T")[0],
-      type: "credit",
-      card_id: null,
-      category_id: null,
-      person_id: null,
-      notes: null,
-    });
-    setCents(0);
-  }, [mode]);
+    if (mode === 'edit' && transaction) {
+      form.reset({
+        description: transaction.description,
+        total_amount: transaction.total_amount,
+        installments_count: transaction.installments_count,
+        purchase_date: transaction.purchase_date,
+        type: transaction.type as any,
+        card_id: transaction.card_id,
+        category_id: transaction.category_id,
+        person_id: transaction.person_id,
+        notes: transaction.notes,
+      });
+      setCents(Math.round(transaction.total_amount * 100));
+    } else {
+      form.reset({
+        description: "",
+        total_amount: 0,
+        installments_count: 1,
+        purchase_date: new Date().toISOString().split("T")[0],
+        type: "credit",
+        card_id: null,
+        category_id: null,
+        person_id: null,
+        notes: null,
+      });
+      setCents(0);
+    }
+  }, [mode, transaction?.id]);
 
   const totalAmount = cents / 100;
   const installmentsCount = installmentsCountValue || 1;
