@@ -48,7 +48,7 @@ export async function GET(request: Request) {
   // Get paginated data
   const { data } = await supabase
     .from('people')
-    .select('id, name')
+    .select('id, name, relationship')
     .is('deleted_at', null)
     .eq('user_id', user.id)
     .order('name', { ascending: true })

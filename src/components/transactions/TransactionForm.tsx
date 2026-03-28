@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { transactionCreateSchema, type TransactionInput } from "@/lib/validations";
 import { useTransactionPanel } from "@/providers/TransactionPanelProvider";
 import { useTransactionData } from "@/providers/TransactionDataProvider";
+import type { Card, Category, Person } from "@/types/database";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,10 +26,6 @@ const TYPES = [
   { value: 'pix' as const, label: 'Pix' },
   { value: 'cash' as const, label: 'Dinheiro' },
 ];
-
-type Card = { id: string; name: string; closing_day: number };
-type Category = { id: string; name: string; icon: string };
-type Person = { id: string; name: string };
 
 type Props = {
   onSuccess: () => void;

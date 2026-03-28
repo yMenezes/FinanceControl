@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { cardCreateSchema, cardUpdateSchema, type CardInput, type CardUpdateInput } from "@/lib/validations";
+import type { Card } from "@/types/database";
 import {
   Dialog,
   DialogContent,
@@ -32,16 +33,6 @@ const BRANDS = [
   "Hipercard",
   "Outro",
 ];
-
-type Card = {
-  id: string;
-  name: string;
-  brand: string | null;
-  closing_day: number;
-  due_day: number;
-  limit_amount: number | null;
-  color: string;
-};
 
 type Props = {
   open: boolean;

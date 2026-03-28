@@ -3,17 +3,12 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Pencil, Trash2, User, ChevronLeft, ChevronRight } from 'lucide-react'
+import type { Person } from '@/types/database'
 import { PeopleFormDialog } from './PeopleFormDialog'
 import { Button } from '@/components/ui/button'
 import { AddButton } from '@/components/ui/add-button'
 import { DeleteDialog } from '@/components/ui/delete-dialog'
 import { deletePerson } from '@/lib/actions/people'
-
-type Person = {
-  id:           string
-  name:         string
-  relationship: string | null
-}
 
 type PaginationResponse = {
   data: Person[]

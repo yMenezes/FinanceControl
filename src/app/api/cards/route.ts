@@ -48,7 +48,7 @@ export async function GET(request: Request) {
   // Get paginated data
   const { data } = await supabase
     .from('cards')
-    .select('id, name, closing_day, color')
+    .select('id, name, brand, closing_day, due_day, limit_amount, color')
     .is('deleted_at', null)
     .eq('user_id', user.id)
     .order('created_at', { ascending: true })

@@ -8,6 +8,7 @@ import {
   LayoutList,
   CalendarDays,
 } from "lucide-react";
+import type { Card } from "@/types/database";
 import { Button } from "@/components/ui/button";
 import { InvoiceInstallmentRow } from "./InvoiceInstallmentRow";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
@@ -38,8 +39,6 @@ type Installment = {
     } | null;
   };
 };
-
-type Card = { id: string; name: string; color: string };
 
 type GroupMode = "category" | "date";
 

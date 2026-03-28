@@ -1,46 +1,25 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import type {
+  Card,
+  Category,
+  Transaction,
+  Installment,
+} from '@/types/database'
 
 type Params = { cardId: string; year: string; month: string }
 
-// Tipos para resposta de installments com transações
-type Card = {
-  id: string
-  name: string
-  color: string
-  closing_day: number
-  due_day: number
-}
-
-type Category = {
-  id: string
-  name: string
-  icon: string
-  color: string
-}
-
-type Transaction = {
-  id: string
-  description: string
-  installments_count: number
-  purchase_date: string
-  type: string
-  card_id: string | null
+// Tipos compostos para a resposta com relacionamentos
+type TransactionWithRelations = Transaction & {
   cards: Card[] | null
   categories: Category[] | null
 }
 
-type Installment = {
-  id: string
-  number: number
-  amount: number
-  paid: boolean
-  reference_month: number
-  reference_year: number
-  transactions: Transaction[] | null
+type InstallmentWithRelations = Installment & {
+  transactions: TransactionWithRelations[] | null
 }
 
-type InstallmentWithTransactionRef = {
+type InstallmentForPatch = {
   id: string
   transactions: Array<{
     card_id: string | null
@@ -113,7 +92,7 @@ export async function GET(
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   // Filtra resultados onde a transação pertence ao usuário e tem cartão válido
-  const filtered = (data as Installment[] ?? []).filter((i) => {
+  const filtered = (data as InstallmentWithRelations[] ?? []).filter((i) => {
     if (isAll) return true
     const tx = i.transactions?.[0]
     return tx?.cards && tx.cards.length > 0
@@ -155,7 +134,7 @@ export async function PATCH(
 
   if (!installments?.length) return NextResponse.json({ updated: 0 })
 
-  const ids = (installments as InstallmentWithTransactionRef[])
+  const ids = (installments as InstallmentForPatch[])
     .filter((i) => {
       const tx = i.transactions[0]
       return cardId === 'all' || tx?.card_id === cardId

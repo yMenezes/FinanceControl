@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { categoryCreateSchema, categoryUpdateSchema, type CategoryInput, type CategoryUpdateInput } from "@/lib/validations";
+import type { Category } from "@/types/database";
 import {
   Dialog,
   DialogContent,
@@ -31,13 +32,6 @@ const ICONS = [
   "🐾",
   "🎵",
 ];
-
-type Category = {
-  id: string;
-  name: string;
-  icon: string;
-  color: string;
-};
 
 type Props = {
   open: boolean;

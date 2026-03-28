@@ -3,21 +3,12 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Pencil, Trash2, CreditCard, ChevronLeft, ChevronRight } from "lucide-react";
+import type { Card } from "@/types/database";
 import { CardFormDialog } from "./CardFormDialog";
 import { Button } from "@/components/ui/button";
 import { AddButton } from "@/components/ui/add-button";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import { deleteCard } from "@/lib/actions/cards";
-
-type Card = {
-  id: string;
-  name: string;
-  brand: string | null;
-  closing_day: number;
-  due_day: number;
-  limit_amount: number | null;
-  color: string;
-};
 
 type PaginationResponse = {
   data: Card[];

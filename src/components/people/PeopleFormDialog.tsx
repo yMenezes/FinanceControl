@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { personCreateSchema, personUpdateSchema, type PersonInput, type PersonUpdateInput } from "@/lib/validations";
+import type { Person } from "@/types/database";
 import {
   Dialog,
   DialogContent,
@@ -25,12 +26,6 @@ const RELATIONSHIPS = [
   "Amigo(a)",
   "Outro",
 ];
-
-type Person = {
-  id: string;
-  name: string;
-  relationship: string | null;
-};
 
 type Props = {
   open: boolean;

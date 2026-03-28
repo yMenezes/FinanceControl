@@ -3,18 +3,12 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Pencil, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import type { Category } from "@/types/database";
 import { CategoryFormDialog } from "./CategoryFormDialog";
 import { Button } from "@/components/ui/button";
 import { AddButton } from "@/components/ui/add-button";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import { deleteCategory } from "@/lib/actions/categories";
-
-type Category = {
-  id: string;
-  name: string;
-  icon: string;
-  color: string;
-};
 
 type PaginationResponse = {
   data: Category[];
