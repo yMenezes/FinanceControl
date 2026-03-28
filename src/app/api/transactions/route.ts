@@ -100,8 +100,17 @@ export async function GET(request: Request) {
   const categoryId = searchParams.get('category_id')
   const personId = searchParams.get('person_id')
   const type     = searchParams.get('type')
+  const page = Math.max(1, parseInt(searchParams.get('page') ?? '1'))
+  const limit = Math.max(1, Math.min(100, parseInt(searchParams.get('limit') ?? '10')))
+  const offset = (page - 1) * limit
 
-  let query = supabase
+  let countQuery = supabase
+    .from('transactions')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', user.id)
+    .is('deleted_at', null)
+
+  let dataQuery = supabase
     .from('transactions')
     .select(`
       id,
@@ -111,6 +120,9 @@ export async function GET(request: Request) {
       purchase_date,
       type,
       notes,
+      card_id,
+      category_id,
+      person_id,
       cards   ( id, name, color ),
       categories ( id, name, icon, color ),
       people  ( id, name )
@@ -119,20 +131,41 @@ export async function GET(request: Request) {
     .is('deleted_at', null)
     .order('purchase_date', { ascending: false })
 
-  if (cardId)     query = query.eq('card_id', cardId)
-  if (categoryId) query = query.eq('category_id', categoryId)
-  if (personId)   query = query.eq('person_id', personId)
-  if (type)       query = query.eq('type', type)
+  if (cardId)     countQuery = countQuery.eq('card_id', cardId)
+  if (cardId)     dataQuery = dataQuery.eq('card_id', cardId)
+  
+  if (categoryId) countQuery = countQuery.eq('category_id', categoryId)
+  if (categoryId) dataQuery = dataQuery.eq('category_id', categoryId)
+  
+  if (personId)   countQuery = countQuery.eq('person_id', personId)
+  if (personId)   dataQuery = dataQuery.eq('person_id', personId)
+  
+  if (type)       countQuery = countQuery.eq('type', type)
+  if (type)       dataQuery = dataQuery.eq('type', type)
+  
   if (month && year) {
     const from = `${year}-${month.padStart(2, '0')}-01`
     const to   = new Date(Number(year), Number(month), 0)
       .toISOString().split('T')[0]
-    query = query.gte('purchase_date', from).lte('purchase_date', to)
+    countQuery = countQuery.gte('purchase_date', from).lte('purchase_date', to)
+    dataQuery = dataQuery.gte('purchase_date', from).lte('purchase_date', to)
   }
 
-  const { data, error } = await query
+  const { count: total } = await countQuery
+  const { data, error } = await dataQuery.range(offset, offset + limit - 1)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  return NextResponse.json(data ?? [])
+  const totalCount = total ?? 0
+  const hasMore = (page * limit) < totalCount
+
+  return NextResponse.json({
+    data: data ?? [],
+    pagination: {
+      page,
+      limit,
+      total: totalCount,
+      hasMore,
+    },
+  })
 }

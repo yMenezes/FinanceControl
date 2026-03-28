@@ -87,9 +87,9 @@ export function TransactionForm({ onSuccess }: Props) {
     async function loadData() {
       try {
         const [cardsRes, catsRes, peopleRes] = await Promise.all([
-          fetch("/api/cards"),
-          fetch("/api/categories"),
-          fetch("/api/people"),
+          fetch("/api/cards?limit=100"),
+          fetch("/api/categories?limit=100"),
+          fetch("/api/people?limit=100"),
         ]);
         const [cardsData, catsData, peopleData] = await Promise.all([
           cardsRes.json(),
@@ -97,9 +97,9 @@ export function TransactionForm({ onSuccess }: Props) {
           peopleRes.json(),
         ]);
         setLocalData({
-          cards: cardsData,
-          categories: catsData,
-          people: peopleData
+          cards: cardsData.data,
+          categories: catsData.data,
+          people: peopleData.data
         });
       } catch (error) {
         console.error("Erro ao carregar dados:", error);
