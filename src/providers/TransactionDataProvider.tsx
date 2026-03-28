@@ -2,6 +2,7 @@
 
 import { createContext, useContext } from 'react'
 
+// Tipos locais que correspondem exatamente ao que as queries retornam
 type Card      = { id: string; name: string }
 type Category  = { id: string; name: string; icon: string }
 type Person    = { id: string; name: string }

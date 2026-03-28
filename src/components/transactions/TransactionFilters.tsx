@@ -1,12 +1,15 @@
 'use client'
 
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
-import type { Card, Category, Person } from '@/types/database'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import {
   Select, SelectContent, SelectItem,
   SelectTrigger, SelectValue,
 } from '@/components/ui/select'
+
+type Card     = { id: string; name: string }
+type Category = { id: string; name: string; icon: string }
+type Person   = { id: string; name: string }
 
 type Props = {
   cards:      Card[]

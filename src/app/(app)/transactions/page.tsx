@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { TransactionList } from '@/components/transactions/TransactionList'
