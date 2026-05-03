@@ -110,6 +110,71 @@ export type Database = {
           deleted_at?: string | null
         }
       }
+      recurring_transactions: {
+        Row: {
+          id: string
+          user_id: string
+          description: string
+          total_amount: number
+          installments_count: number
+          type: 'credit' | 'debit' | 'pix' | 'cash'
+          day_of_month: number
+          start_date: string
+          end_date: string | null
+          next_run_date: string
+          last_run_date: string | null
+          active: boolean
+          card_id: string | null
+          category_id: string | null
+          person_id: string | null
+          notes: string | null
+          created_at: string
+          updated_at: string
+          deleted_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          description: string
+          total_amount: number
+          installments_count: number
+          type: 'credit' | 'debit' | 'pix' | 'cash'
+          day_of_month: number
+          start_date: string
+          end_date?: string | null
+          next_run_date: string
+          last_run_date?: string | null
+          active?: boolean
+          card_id?: string | null
+          category_id?: string | null
+          person_id?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+          deleted_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          description?: string
+          total_amount?: number
+          installments_count?: number
+          type?: 'credit' | 'debit' | 'pix' | 'cash'
+          day_of_month?: number
+          start_date?: string
+          end_date?: string | null
+          next_run_date?: string
+          last_run_date?: string | null
+          active?: boolean
+          card_id?: string | null
+          category_id?: string | null
+          person_id?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+          deleted_at?: string | null
+        }
+      }
       transactions: {
         Row: {
           id: string
@@ -240,6 +305,10 @@ export type CategoryUpdate = Database['public']['Tables']['categories']['Update'
 export type Person = Database['public']['Tables']['people']['Row']
 export type PersonInsert = Database['public']['Tables']['people']['Insert']
 export type PersonUpdate = Database['public']['Tables']['people']['Update']
+
+export type RecurringTransaction = Database['public']['Tables']['recurring_transactions']['Row']
+export type RecurringTransactionInsert = Database['public']['Tables']['recurring_transactions']['Insert']
+export type RecurringTransactionUpdate = Database['public']['Tables']['recurring_transactions']['Update']
 
 export type Transaction = Database['public']['Tables']['transactions']['Row']
 export type TransactionInsert = Database['public']['Tables']['transactions']['Insert']

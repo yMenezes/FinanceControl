@@ -57,6 +57,33 @@ create table public.people (
 );
 
 -- ──────────────────────────────────────────────────────────────
+-- RECURRING TRANSACTIONS
+-- Template rows used to generate future transactions automatically.
+-- ──────────────────────────────────────────────────────────────
+create table public.recurring_transactions (
+  id               uuid primary key default uuid_generate_v4(),
+  user_id          uuid not null references auth.users(id) on delete cascade,
+  card_id          uuid references public.cards(id) on delete set null,
+  category_id      uuid references public.categories(id) on delete set null,
+  person_id        uuid references public.people(id) on delete set null,
+  description      text not null,
+  total_amount     numeric(12, 2) not null check (total_amount > 0),
+  installments_count int not null default 1 check (installments_count >= 1),
+  type             text not null default 'credit',
+  day_of_month     int not null check (day_of_month between 1 and 31),
+  start_date       date not null default current_date,
+  end_date         date,
+  next_run_date    date not null,
+  last_run_date    date,
+  active           boolean not null default true,
+  notes            text,
+  created_at       timestamptz default now(),
+  updated_at       timestamptz default now(),
+  deleted_at       timestamptz default null,
+  check (end_date is null or end_date >= start_date)
+);
+
+-- ──────────────────────────────────────────────────────────────
 -- TRANSACTIONS
 -- One row per purchase. Installment info lives here (count, total).
 -- The actual monthly breakdown is in the installments table.
@@ -151,6 +178,15 @@ create index idx_transactions_scheduled_for
 create index idx_transactions_status_user_id
   on public.transactions(user_id, status);
 
+-- Get recurring rules by user and active state
+create index idx_recurring_transactions_user_active
+  on public.recurring_transactions(user_id, active);
+
+-- Fast lookup for the scheduler
+create index idx_recurring_transactions_next_run
+  on public.recurring_transactions(next_run_date)
+  where active = true;
+
 
 -- ──────────────────────────────────────────────────────────────
 -- ROW LEVEL SECURITY (RLS)
@@ -161,6 +197,7 @@ create index idx_transactions_status_user_id
 alter table public.cards        enable row level security;
 alter table public.categories   enable row level security;
 alter table public.people       enable row level security;
+alter table public.recurring_transactions enable row level security;
 alter table public.transactions enable row level security;
 alter table public.installments enable row level security;
 
@@ -213,6 +250,23 @@ create policy "Users can update their own people"
 
 create policy "Users can delete their own people"
   on public.people for delete
+  using (auth.uid() = user_id);
+
+-- RECURRING TRANSACTIONS policies
+create policy "Users can view their own recurring transactions"
+  on public.recurring_transactions for select
+  using (auth.uid() = user_id);
+
+create policy "Users can insert their own recurring transactions"
+  on public.recurring_transactions for insert
+  with check (auth.uid() = user_id);
+
+create policy "Users can update their own recurring transactions"
+  on public.recurring_transactions for update
+  using (auth.uid() = user_id);
+
+create policy "Users can delete their own recurring transactions"
+  on public.recurring_transactions for delete
   using (auth.uid() = user_id);
 
 -- TRANSACTIONS policies

@@ -1,14 +1,14 @@
 import { createClient } from '@/lib/supabase/server'
 import { formatCurrency } from '@/lib/utils'
-import { ArrowDown, ArrowUp, TrendingUp } from 'lucide-react'
+import { ArrowDown, ArrowUp, Repeat2 } from 'lucide-react'
 
 type SummaryMetrics = {
   totalThisMonth: number
   totalLastMonth: number
-  averagePerDay: number
   topCategory: string | null
   scheduledThisMonthTotal: number
   scheduledThisMonthCount: number
+  recurringTotal: number
 }
 
 async function getDashboardSummary(): Promise<SummaryMetrics> {
@@ -41,10 +41,6 @@ async function getDashboardSummary(): Promise<SummaryMetrics> {
 
   const totalLastMonth = (lastMonthData ?? []).reduce((sum, item) => sum + item.amount, 0)
 
-  // Average per day this month
-  const daysInMonth = now.getDate()
-  const averagePerDay = totalThisMonth / daysInMonth
-
   // Top category this month
   const { data: topCategoryData } = await supabase
     .from('installments')
@@ -73,18 +69,27 @@ async function getDashboardSummary(): Promise<SummaryMetrics> {
   const scheduledThisMonthTotal = (scheduledData ?? []).reduce((sum, item) => sum + item.total_amount, 0)
   const scheduledThisMonthCount = scheduledData?.length ?? 0
 
+  const { data: recurringData } = await supabase
+    .from('recurring_transactions')
+    .select('total_amount')
+    .eq('user_id', user.id)
+    .is('deleted_at', null)
+    .eq('active', true)
+
+  const recurringTotal = (recurringData ?? []).reduce((sum, item) => sum + item.total_amount, 0)
+
   return {
     totalThisMonth,
     totalLastMonth,
-    averagePerDay,
     topCategory,
     scheduledThisMonthTotal,
     scheduledThisMonthCount,
+    recurringTotal,
   }
 }
 
 export async function SummaryCards() {
-  const { totalThisMonth, totalLastMonth, averagePerDay, topCategory, scheduledThisMonthTotal, scheduledThisMonthCount } = await getDashboardSummary()
+  const { totalThisMonth, totalLastMonth, topCategory, scheduledThisMonthTotal, scheduledThisMonthCount, recurringTotal } = await getDashboardSummary()
 
   const trend = totalThisMonth > totalLastMonth ? 'up' : totalThisMonth < totalLastMonth ? 'down' : 'stable'
   const trendPercent = totalLastMonth > 0 ? ((totalThisMonth - totalLastMonth) / totalLastMonth) * 100 : 0
@@ -116,16 +121,23 @@ export async function SummaryCards() {
             </p>
           </div>
           <div className="opacity-10">
-            <TrendingUp className="w-12 h-12" />
+            <ArrowUp className="w-12 h-12" />
           </div>
         </div>
       </div>
 
-      {/* Average Per Day */}
+      {/* Recurring Accounts */}
       <div className="bg-gradient-to-br from-purple-500/10 to-purple-500/5 rounded-xl border border-purple-200/50 dark:border-purple-800/50 p-6 hover:shadow-md transition-all">
-        <p className="text-sm font-medium text-muted-foreground">Média diária</p>
-        <p className="text-4xl font-bold mt-3 text-purple-600 dark:text-purple-400">{formatCurrency(averagePerDay)}</p>
-        <p className="text-xs text-muted-foreground mt-3">Projeção: <span className="font-semibold text-foreground">{formatCurrency(averagePerDay * 30)}</span></p>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1">
+            <p className="text-sm font-medium text-muted-foreground">Contas recorrentes</p>
+            <p className="text-4xl font-bold mt-3 text-purple-600 dark:text-purple-400">{formatCurrency(recurringTotal)}</p>
+            <p className="text-xs text-muted-foreground mt-3">Total das recorrências ativas</p>
+          </div>
+          <div className="opacity-10">
+            <Repeat2 className="w-12 h-12" />
+          </div>
+        </div>
       </div>
 
       {/* Top Category */}
@@ -149,8 +161,8 @@ export async function SummaryCards() {
 
 export function SummaryCardsSkeleton() {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      {Array.from({ length: 3 }).map((_, i) => (
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {Array.from({ length: 4 }).map((_, i) => (
         <div key={i} className="bg-gradient-to-br from-card to-card/80 rounded-xl border border-border/50 p-6">
           <div className="flex flex-col gap-4">
             <div className="h-4 w-32 bg-muted rounded-lg animate-pulse" />

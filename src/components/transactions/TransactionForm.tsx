@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TransactionFormSkeleton } from "./TransactionFormSkeleton";
+import { MoneyInput } from "@/components/ui/money-input";
 
 type Card = { id: string; name: string };
 type Category = { id: string; name: string; icon: string };
@@ -44,7 +45,6 @@ export function TransactionForm({ onSuccess }: Props) {
     categories: [] as Category[],
     people: [] as Person[]
   });
-  const [cents, setCents] = useState(0);
   const [isLoadingData, setIsLoadingData] = useState(true);
 
   // Use context data or local data
@@ -141,7 +141,7 @@ export function TransactionForm({ onSuccess }: Props) {
         person_id: transaction.person_id,
         notes: transaction.notes,
       });
-      setCents(Math.round(transaction.total_amount * 100));
+      // total_amount value is set on the form; MoneyInput will handle display
     } else {
       form.reset({
         description: "",
@@ -157,7 +157,7 @@ export function TransactionForm({ onSuccess }: Props) {
         person_id: null,
         notes: null,
       });
-      setCents(0);
+      // handled by MoneyInput
     }
   }, [mode, transaction?.id]);
 
@@ -174,7 +174,7 @@ export function TransactionForm({ onSuccess }: Props) {
     }
   }, [isScheduled, purchaseDateValue, form]);
 
-  const totalAmount = cents / 100;
+  const totalAmount = form.watch("total_amount") || 0;
   const installmentsCount = installmentsCountValue || 1;
   const amountPerInstallment =
     totalAmount > 0
@@ -326,42 +326,15 @@ export function TransactionForm({ onSuccess }: Props) {
 
       {/* Amount + Date */}
       <div className="grid grid-cols-2 gap-3">
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="amount">Valor total</Label>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-              R$
-            </span>
-            <Input
-              id="amount"
-              inputMode="numeric"
-              placeholder="0,00"
-              className="pl-9"
-              value={
-                cents === 0
-                  ? ""
-                  : (cents / 100).toLocaleString("pt-BR", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })
-              }
-              onChange={(e) => {
-                const digits = e.target.value.replace(/\D/g, "");
-                const value = parseInt(digits || "0", 10);
-                setCents(value);
-                form.setValue("total_amount", value / 100);
-                if (isScheduled) {
-                  form.setValue("scheduled_for", form.getValues("purchase_date"), { shouldValidate: false });
-                }
-              }}
-            />
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="amount">Valor total</Label>
+            <MoneyInput control={form.control} name="total_amount" id="amount" />
+            {form.formState.errors.total_amount && (
+              <span className="text-sm text-red-500">
+                {form.formState.errors.total_amount.message}
+              </span>
+            )}
           </div>
-          {form.formState.errors.total_amount && (
-            <span className="text-sm text-red-500">
-              {form.formState.errors.total_amount.message}
-            </span>
-          )}
-        </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="date">{isScheduled ? 'Data agendada' : 'Data da compra'}</Label>
           <Input
