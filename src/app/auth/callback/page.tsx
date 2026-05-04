@@ -68,7 +68,6 @@ export default function AuthCallbackPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">
       <div className="text-center space-y-3">
-        <div className="text-2xl animate-pulse">💸</div>
         <p className="text-sm text-muted-foreground">{status}</p>
       </div>
     </div>

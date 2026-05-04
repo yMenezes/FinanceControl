@@ -153,7 +153,7 @@ export function TransactionFilters({ cards, categories, people }: Props) {
           />
 
           {/* Painel */}
-          <div className="fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+          <div className="fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-6 shadow-xl max-h-[90vh] overflow-y-auto pointer-events-auto">
             {/* Cabeçalho */}
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-base font-semibold">Filtros</h3>

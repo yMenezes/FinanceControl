@@ -19,7 +19,7 @@ export function TransactionPanel() {
       />
 
       {/* Painel */}
-      <div className="fixed inset-y-0 right-0 z-50 flex w-full flex-col bg-background shadow-xl sm:w-[440px] border-l border-border">
+      <div className="fixed inset-y-0 right-0 z-50 flex w-full flex-col bg-background shadow-xl sm:w-[440px] border-l border-border pointer-events-auto">
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <h2 className="text-sm font-medium">Novo lançamento</h2>
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={close}>
