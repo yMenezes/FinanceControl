@@ -1,6 +1,6 @@
 <div align="center">
 
-# 💸 FinTrack
+# Finance Control
 
 **EN** | [PT-BR](#pt-br)
 
@@ -56,8 +56,8 @@
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/your-username/fintrack.git
-cd fintrack
+git clone https://github.com/your-username/FinanceControl.git
+cd FinanceControl
 ```
 
 ### 2. Install dependencies
@@ -107,7 +107,7 @@ Open [http://localhost:3000](http://localhost:3000) — you should see the login
 ## Project Structure
 
 ```
-fintrack/
+FinanceControl/
 ├── app/                          # Next.js App Router
 │   ├── (auth)/                   # Route group — no sidebar layout
 │   │   ├── login/page.tsx
@@ -233,7 +233,7 @@ MIT — see [LICENSE](LICENSE) for details.
 
 ---
 
-# 💸 FinTrack — Documentação em Português
+# Finance Control — Documentação em Português
 
 </div>
 
@@ -261,8 +261,8 @@ MIT — see [LICENSE](LICENSE) for details.
 
 ```bash
 # 1. Clone o repositório
-git clone https://github.com/seu-usuario/fintrack.git
-cd fintrack
+git clone https://github.com/seu-usuario/FinanceControl.git
+cd FinanceControl
 
 # 2. Instale as dependências
 npm install
