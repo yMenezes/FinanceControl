@@ -26,8 +26,7 @@ const navSections = [
       { href: '/dashboard',       label: 'Dashboard',      icon: LayoutDashboard },
       { href: '/transactions',     label: 'Lançamentos',    icon: List            },
       { href: '/recurring',       label: 'Recorrências',   icon: Repeat          },
-      { href: '/invoices',         label: 'Fatura mensal',  icon: CalendarRange   },
-      { href: '/cards',           label: 'Cartões',        icon: CreditCard      },
+      // { href: '/invoices',         label: 'Fatura mensal',  icon: CalendarRange   },
     ],
   },
   {
@@ -35,6 +34,7 @@ const navSections = [
     items: [
       { href: '/categories', label: 'Categorias', icon: Tag   },
       { href: '/people',    label: 'Pessoas',    icon: Users },
+      { href: '/cards',           label: 'Cartões',        icon: CreditCard      },
     ],
   },
   {
