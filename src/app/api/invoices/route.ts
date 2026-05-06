@@ -21,8 +21,8 @@ function getDateRangeFromParams(
   month: number,
   year: number,
   quarter?: number,
-  dateFrom?: string,
-  dateTo?: string
+  dateFrom?: string | null,
+  dateTo?: string | null
 ): { from: string; to: string } {
   if (periodType === 'custom' && dateFrom && dateTo) {
     return { from: dateFrom, to: dateTo }
@@ -169,7 +169,7 @@ export async function PATCH(request: Request) {
 
   if (!installments?.length) return NextResponse.json({ updated: 0 })
 
-  const ids = (installments as Array<{ id: string; transactions: Array<any> }>[])
+  const ids = (installments as Array<{ id: string; transactions: Array<any> }>)
     .filter((i) => {
       const tx = i.transactions[0]
       return cardId === 'all' || tx?.card_id === cardId

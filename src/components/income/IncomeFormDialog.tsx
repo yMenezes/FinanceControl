@@ -26,7 +26,7 @@ type IncomeWithRelations = Income & {
 type Props = {
   open: boolean
   onClose: () => void
-  income?: IncomeWithRelations
+  income?: Pick<IncomeWithRelations, 'id' | 'description' | 'amount' | 'date' | 'source' | 'category_id' | 'person_id' | 'notes'>
   onSaved?: () => void
 }
 

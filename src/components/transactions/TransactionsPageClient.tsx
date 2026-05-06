@@ -6,7 +6,7 @@ import { TransactionList } from '@/components/transactions/TransactionList'
 import { IncomeTab } from '@/components/income/IncomeTab'
 
 type Card = { id: string; name: string; color?: string }
-type Category = { id: string; name: string; icon?: string }
+type Category = { id: string; name: string; icon: string }
 type Person = { id: string; name: string }
 
 type Props = {

@@ -247,7 +247,8 @@ export function IncomeList({ month, year, categoryId, personId, source, periodTy
       <DeleteDialog
         open={!!deleteTarget}
         onConfirm={handleDelete}
-        onCancel={() => setDeleteTarget(null)}
+        onClose={() => setDeleteTarget(null)}
+        title="Excluir entrada"
         description={`Tem certeza que deseja excluir a entrada "${deleteTarget?.description}"?`}
       />
     </div>
