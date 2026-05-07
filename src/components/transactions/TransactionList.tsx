@@ -36,6 +36,10 @@ type TransactionListProps = {
   categoryId?: string;
   personId?: string;
   type?: string;
+  periodType?: string;
+  quarter?: string;
+  dateFrom?: string;
+  dateTo?: string;
 };
 
 const TYPE_LABELS: Record<string, { label: string; className: string }> = {
@@ -81,6 +85,10 @@ export function TransactionList({
   categoryId,
   personId,
   type,
+  periodType,
+  quarter,
+  dateFrom,
+  dateTo,
 }: TransactionListProps) {
   const router = useRouter();
   const [page, setPage] = useState(1);
@@ -100,15 +108,19 @@ export function TransactionList({
       params.append('year', year);
       params.append('page', String(page));
       params.append('limit', '10');
-      
+
       if (cardId) params.append('card_id', cardId);
       if (categoryId) params.append('category_id', categoryId);
       if (personId) params.append('person_id', personId);
       if (type) params.append('type', type);
+      if (periodType) params.append('period_type', periodType);
+      if (quarter) params.append('quarter', String(quarter));
+      if (dateFrom) params.append('date_from', dateFrom);
+      if (dateTo) params.append('date_to', dateTo);
 
       const response = await fetch(`/api/transactions?${params.toString()}`);
       const result = await response.json();
-      
+
       setTransactions(result.data || []);
       setPagination(result.pagination || { page: 1, limit: 10, total: 0, hasMore: false });
     } catch (error) {
@@ -118,7 +130,7 @@ export function TransactionList({
     } finally {
       setLoading(false);
     }
-  }, [month, year, page, cardId, categoryId, personId, type]);
+  }, [month, year, page, cardId, categoryId, personId, type, periodType, quarter, dateFrom, dateTo]);
 
   // Registrar função de refetch no painel
   useEffect(() => {

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
-import { ChevronLeft, ChevronRight, SlidersHorizontal, X } from 'lucide-react'
+import { SlidersHorizontal, X } from 'lucide-react'
 import {
   Select, SelectContent, SelectItem,
   SelectTrigger, SelectValue,
@@ -27,20 +27,11 @@ const TYPES = [
   { value: 'cash',   label: 'Dinheiro' },
 ]
 
-const MONTHS = [
-  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
-]
-
 export function TransactionFilters({ cards, categories, people }: Props) {
   const router       = useRouter()
   const pathname     = usePathname()
   const searchParams = useSearchParams()
   const [open, setOpen] = useState(false)
-
-  const now   = new Date()
-  const month = Number(searchParams.get('month') ?? now.getMonth() + 1)
-  const year  = Number(searchParams.get('year')  ?? now.getFullYear())
 
   // Local state — preenchido a partir da URL ao abrir o modal
   const [localCard,     setLocalCard]     = useState('all')
@@ -89,46 +80,10 @@ export function TransactionFilters({ cards, categories, people }: Props) {
     setLocalPerson('all')
   }
 
-  function prevMonth() {
-    const d = new Date(year, month - 2)
-    const params = new URLSearchParams(searchParams.toString())
-    params.set('month', String(d.getMonth() + 1))
-    params.set('year',  String(d.getFullYear()))
-    router.push(`${pathname}?${params.toString()}`)
-  }
-
-  function nextMonth() {
-    const d = new Date(year, month)
-    const params = new URLSearchParams(searchParams.toString())
-    params.set('month', String(d.getMonth() + 1))
-    params.set('year',  String(d.getFullYear()))
-    router.push(`${pathname}?${params.toString()}`)
-  }
-
   return (
     <>
       {/* Barra de filtros compacta */}
-      <div className="flex items-center justify-between gap-2 mb-5">
-        {/* Navegador de mês */}
-        <div className="flex items-center gap-1 rounded-lg border border-border bg-card px-2 py-1.5">
-          <button
-            onClick={prevMonth}
-            className="flex h-6 w-6 items-center justify-center rounded hover:bg-accent transition-colors"
-          >
-            <ChevronLeft className="h-3.5 w-3.5" />
-          </button>
-          <span className="min-w-[110px] text-center text-xs font-medium">
-            {MONTHS[month - 1]} {year}
-          </span>
-          <button
-            onClick={nextMonth}
-            className="flex h-6 w-6 items-center justify-center rounded hover:bg-accent transition-colors"
-          >
-            <ChevronRight className="h-3.5 w-3.5" />
-          </button>
-        </div>
-
-        {/* Botão filtrar */}
+      <div className="flex items-center justify-end gap-2 mb-5">
         <button
           onClick={openModal}
           className="relative flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2.5 text-xs font-medium hover:bg-accent transition-colors"
