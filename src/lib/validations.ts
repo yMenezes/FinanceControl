@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { INCOME_SOURCES } from '@/types/database'
 
 const TRANSACTION_STATUS = ['posted', 'scheduled', 'cancelled'] as const
 const TRANSACTION_SCHEDULE_SOURCE = ['manual', 'recurring'] as const
@@ -145,3 +146,23 @@ export const installmentUpdateSchema = z.object({
 })
 
 export type InstallmentUpdateInput = z.infer<typeof installmentUpdateSchema>
+
+// ──────────────────────────────────────────────────────────────
+// INCOME
+// ──────────────────────────────────────────────────────────────
+
+const incomeFieldsSchema = {
+  description: z.string().min(1, 'Descrição obrigatória'),
+  amount: z.number().positive('Valor deve ser positivo'),
+  date: z.string().date('Data inválida'),
+  source: z.enum(INCOME_SOURCES).default('other'),
+  category_id: z.string().uuid('ID da categoria inválido').optional().nullable(),
+  person_id: z.string().uuid('ID da pessoa inválido').optional().nullable(),
+  notes: z.string().optional().nullable(),
+}
+
+export const incomeCreateSchema = z.object(incomeFieldsSchema)
+export const incomeUpdateSchema = z.object(incomeFieldsSchema).partial()
+
+export type IncomeInput = z.infer<typeof incomeCreateSchema>
+export type IncomeUpdateInput = z.infer<typeof incomeUpdateSchema>

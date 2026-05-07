@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
 const PRESET_COLORS = [
@@ -22,15 +23,52 @@ type Props = {
   label?:   string
 }
 
-export function ColorPicker({ value, onChange, label = 'Cor' }: Props) {
-  const [localColor, setLocalColor] = useState(value)
+function normalizeHexColor(input: string, fallback = '#820ad1') {
+  const cleaned = input.trim().replace('#', '').replace(/[^0-9a-fA-F]/g, '')
 
-  function handlePresetClick(color: string) {
-    setLocalColor(color)
-    onChange(color)
+  if (cleaned.length === 3) {
+    const expanded = cleaned
+      .split('')
+      .map(char => `${char}${char}`)
+      .join('')
+      .toLowerCase()
+
+    return `#${expanded}`
   }
 
-  // Check if localColor is a custom color (not in presets)
+  if (cleaned.length === 6) {
+    return `#${cleaned.toLowerCase()}`
+  }
+
+  return fallback
+}
+
+function toHexDraft(input: string) {
+  const cleaned = input.trim().replace('#', '').replace(/[^0-9a-fA-F]/g, '').slice(0, 6)
+  return `#${cleaned.toUpperCase()}`
+}
+
+export function ColorPicker({ value, onChange, label = 'Cor' }: Props) {
+  const [localColor, setLocalColor] = useState(() => normalizeHexColor(value))
+  const [hexDraft, setHexDraft] = useState(() => normalizeHexColor(value).toUpperCase())
+
+  useEffect(() => {
+    const normalized = normalizeHexColor(value)
+    setLocalColor(normalized)
+    setHexDraft(normalized.toUpperCase())
+  }, [value])
+
+  function commitColor(next: string) {
+    const normalized = normalizeHexColor(next, localColor)
+    setLocalColor(normalized)
+    setHexDraft(normalized.toUpperCase())
+    onChange(normalized)
+  }
+
+  function handlePresetClick(color: string) {
+    commitColor(color)
+  }
+
   const isCustom = !PRESET_COLORS.some(c => c.value.toLowerCase() === localColor.toLowerCase())
 
   return (
@@ -46,10 +84,11 @@ export function ColorPicker({ value, onChange, label = 'Cor' }: Props) {
             className="h-7 w-7 rounded-full transition-transform hover:scale-110"
             style={{
               background:    c.value,
-              outline:       value === c.value ? `2px solid ${c.value}` : 'none',
+              outline:       value.toLowerCase() === c.value.toLowerCase() ? `2px solid ${c.value}` : 'none',
               outlineOffset: '2px',
             }}
             title={c.label}
+            aria-label={c.label}
           />
         ))}
 
@@ -59,19 +98,19 @@ export function ColorPicker({ value, onChange, label = 'Cor' }: Props) {
           <input
             type="color"
             value={localColor}
-            onChange={e => setLocalColor(e.target.value)}
-            onBlur={e => onChange(e.target.value)}
+            onChange={e => commitColor(e.target.value)}
             className="absolute inset-0 opacity-0 cursor-pointer"
             title="Cor personalizada"
+            aria-label="Cor personalizada"
           />
           <button
             type="button"
             className="absolute inset-0 rounded-full border border-border transition-transform hover:scale-110"
             style={{
-              background: isCustom 
+              background: isCustom
                 ? localColor
                 : 'conic-gradient(from 0deg, red, yellow, lime, cyan, blue, magenta, red)',
-              outline: value === localColor ? `2px solid ${localColor}` : 'none',
+              outline: value.toLowerCase() === localColor.toLowerCase() ? `2px solid ${localColor}` : 'none',
               outlineOffset: '2px',
             }}
             title="Cor personalizada"
@@ -83,10 +122,26 @@ export function ColorPicker({ value, onChange, label = 'Cor' }: Props) {
         </div>
       </div>
 
-      {/* <div className="flex items-center gap-2 mt-0.5">
-        <div className="h-4 w-4 rounded-full border border-border" style={{ background: localColor }} />
-        <span className="text-xs text-muted-foreground font-mono">{localColor}</span>
-      </div> */}
+      <div className="sm:hidden">
+        <Input
+          type="text"
+          value={hexDraft}
+          onChange={e => {
+            const draft = toHexDraft(e.target.value)
+            setHexDraft(draft)
+
+            if (draft.length === 7) {
+              commitColor(draft)
+            }
+          }}
+          onBlur={() => commitColor(hexDraft)}
+          placeholder="#A1B2C3"
+          maxLength={7}
+          className="h-9 font-mono text-xs uppercase"
+          title="Cor personalizada"
+          aria-label="Cor personalizada em HEX"
+        />
+      </div>
     </div>
   )
 }

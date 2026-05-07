@@ -5,9 +5,64 @@
  * Usage: import { Database } from '@/types/database'
  */
 
+export const INCOME_SOURCES = ['salary', 'freelance', 'loan', 'gift', 'other'] as const
+export type IncomeSource = typeof INCOME_SOURCES[number]
+
+export const INCOME_SOURCE_LABELS: Record<IncomeSource, string> = {
+  salary: 'Salário',
+  freelance: 'Freelance',
+  loan: 'Empréstimo',
+  gift: 'Presente',
+  other: 'Outro',
+}
+
 export type Database = {
   public: {
     Tables: {
+      income: {
+        Row: {
+          id: string
+          user_id: string
+          category_id: string | null
+          person_id: string | null
+          description: string
+          amount: number
+          date: string
+          source: IncomeSource
+          notes: string | null
+          created_at: string
+          updated_at: string
+          deleted_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          category_id?: string | null
+          person_id?: string | null
+          description: string
+          amount: number
+          date: string
+          source?: IncomeSource
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+          deleted_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          category_id?: string | null
+          person_id?: string | null
+          description?: string
+          amount?: number
+          date?: string
+          source?: IncomeSource
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+          deleted_at?: string | null
+        }
+      }
       cards: {
         Row: {
           id: string
@@ -316,6 +371,10 @@ export type RecurringTransactionUpdate = Database['public']['Tables']['recurring
 export type Transaction = Database['public']['Tables']['transactions']['Row']
 export type TransactionInsert = Database['public']['Tables']['transactions']['Insert']
 export type TransactionUpdate = Database['public']['Tables']['transactions']['Update']
+
+export type Income = Database['public']['Tables']['income']['Row']
+export type IncomeInsert = Database['public']['Tables']['income']['Insert']
+export type IncomeUpdate = Database['public']['Tables']['income']['Update']
 
 export type Installment = Database['public']['Tables']['installments']['Row']
 export type InstallmentInsert = Database['public']['Tables']['installments']['Insert']
