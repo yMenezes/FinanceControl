@@ -27,7 +27,7 @@ const navSections = [
       { href: '/dashboard',    label: 'Dashboard',     icon: LayoutDashboard },
       { href: '/transactions', label: 'Lançamentos',   icon: List            },
       { href: '/recurring',   label: 'Recorrências',  icon: Repeat          },
-      // { href: '/invoices',    label: 'Fatura mensal', icon: CalendarRange   },
+      { href: '/invoices',    label: 'Fatura mensal', icon: CalendarRange   },
     ],
   },
   {

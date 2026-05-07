@@ -16,40 +16,6 @@ type InstallmentWithRelations = Installment & {
   transactions: TransactionWithRelations[] | null
 }
 
-function getDateRangeFromParams(
-  periodType: string | null,
-  month: number,
-  year: number,
-  quarter?: number,
-  dateFrom?: string | null,
-  dateTo?: string | null
-): { from: string; to: string } {
-  if (periodType === 'custom' && dateFrom && dateTo) {
-    return { from: dateFrom, to: dateTo }
-  }
-
-  if (periodType === 'quarterly') {
-    const q = quarter ?? Math.ceil(month / 3)
-    const startMonth = (q - 1) * 3 + 1
-    const endMonth = q * 3
-    const from = `${year}-${String(startMonth).padStart(2, '0')}-01`
-    const to = new Date(year, endMonth, 0).toISOString().split('T')[0]
-    return { from, to }
-  }
-
-  if (periodType === 'annual') {
-    return {
-      from: `${year}-01-01`,
-      to: `${year}-12-31`,
-    }
-  }
-
-  // Default: monthly
-  const from = `${year}-${String(month).padStart(2, '0')}-01`
-  const to = new Date(year, month, 0).toISOString().split('T')[0]
-  return { from, to }
-}
-
 export async function GET(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -63,22 +29,16 @@ export async function GET(request: Request) {
   const limit = Math.max(1, Math.min(100, parseInt(searchParams.get('limit') ?? '20')))
   const offset = (page - 1) * limit
 
-  const periodType = searchParams.get('period_type') ?? 'monthly'
-  const quarter = searchParams.get('quarter') ? Number(searchParams.get('quarter')) : undefined
-  const dateFrom = searchParams.get('date_from')
-  const dateTo = searchParams.get('date_to')
-
-  const { from, to } = getDateRangeFromParams(periodType, month, year, quarter, dateFrom, dateTo)
   const isAll = cardId === 'all'
 
-  // Busca total de parcelas
+  // Busca total de parcelas do mês/ano específico
   let countQuery = supabase
     .from('installments')
     .select('id', { count: 'exact', head: true })
     .eq('transactions.status', 'posted')
     .eq('transactions.user_id', user.id)
-    .gte('transactions.purchase_date', from)
-    .lte('transactions.purchase_date', to)
+    .eq('reference_month', month)
+    .eq('reference_year', year)
 
   if (!isAll) {
     countQuery = countQuery.eq('transactions.card_id', cardId)
@@ -86,7 +46,7 @@ export async function GET(request: Request) {
 
   const { count: total } = await countQuery
 
-  // Busca parcelas do período com dados da transação
+  // Busca parcelas do mês/ano com dados da transação
   let query = supabase
     .from('installments')
     .select(`
@@ -109,8 +69,8 @@ export async function GET(request: Request) {
     `)
     .eq('transactions.status', 'posted')
     .eq('transactions.user_id', user.id)
-    .gte('transactions.purchase_date', from)
-    .lte('transactions.purchase_date', to)
+    .eq('reference_month', month)
+    .eq('reference_year', year)
     .order('created_at', { ascending: true })
 
   if (!isAll) {
@@ -152,20 +112,13 @@ export async function PATCH(request: Request) {
   const cardId = searchParams.get('card_id') ?? 'all'
   const { paid } = await request.json()
 
-  const periodType = searchParams.get('period_type') ?? 'monthly'
-  const quarter = searchParams.get('quarter') ? Number(searchParams.get('quarter')) : undefined
-  const dateFrom = searchParams.get('date_from')
-  const dateTo = searchParams.get('date_to')
-
-  const { from, to } = getDateRangeFromParams(periodType, month, year, quarter, dateFrom, dateTo)
-
   const { data: installments } = await supabase
     .from('installments')
-    .select('id, transactions!inner( card_id, user_id, purchase_date )')
+    .select('id, transactions!inner( card_id, user_id )')
     .eq('transactions.user_id', user.id)
     .eq('transactions.status', 'posted')
-    .gte('transactions.purchase_date', from)
-    .lte('transactions.purchase_date', to)
+    .eq('reference_month', month)
+    .eq('reference_year', year)
 
   if (!installments?.length) return NextResponse.json({ updated: 0 })
 
