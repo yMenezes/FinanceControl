@@ -1,5 +1,5 @@
 -- ============================================================
--- FinTrack — Database Schema
+-- Finance Control — Database Schema
 -- Run this file in the Supabase SQL Editor to set up the DB.
 -- ============================================================
 
@@ -145,6 +145,28 @@ create table public.installments (
 
 
 -- ──────────────────────────────────────────────────────────────
+-- INCOME
+-- Manual income entries (salary, freelance, etc).
+-- source: 'salary' | 'freelance' | 'investment' | 'gift' | 'other'
+-- ──────────────────────────────────────────────────────────────
+create table public.income (
+  id          uuid primary key default uuid_generate_v4(),
+  user_id     uuid not null references auth.users(id) on delete cascade,
+  category_id uuid references public.categories(id) on delete set null,
+  person_id   uuid references public.people(id) on delete set null,
+  description text not null,
+  amount      numeric(12, 2) not null check (amount > 0),
+  date        date not null default current_date,
+  source      text not null default 'other'
+                check (source in ('salary', 'freelance', 'investment', 'gift', 'other')),
+  notes       text,
+  created_at  timestamptz default now(),
+  updated_at  timestamptz default now(),
+  deleted_at  timestamptz default null
+);
+
+
+-- ──────────────────────────────────────────────────────────────
 -- INDEXES
 -- Speed up the most common queries.
 -- ──────────────────────────────────────────────────────────────
@@ -196,6 +218,10 @@ create index idx_transactions_recurring_id
   on public.transactions(recurring_transaction_id)
   where recurring_transaction_id is not null;
 
+-- Income indexes
+create index idx_income_user_id on public.income(user_id);
+create index idx_income_date    on public.income(user_id, date);
+
 
 -- ──────────────────────────────────────────────────────────────
 -- ROW LEVEL SECURITY (RLS)
@@ -209,6 +235,7 @@ alter table public.people       enable row level security;
 alter table public.recurring_transactions enable row level security;
 alter table public.transactions enable row level security;
 alter table public.installments enable row level security;
+alter table public.income       enable row level security;
 
 -- CARDS policies
 create policy "Users can view their own cards"
@@ -293,6 +320,23 @@ create policy "Users can update their own transactions"
 
 create policy "Users can delete their own transactions"
   on public.transactions for delete
+  using (auth.uid() = user_id);
+
+-- INCOME policies
+create policy "Users can view their own income"
+  on public.income for select
+  using (auth.uid() = user_id);
+
+create policy "Users can insert their own income"
+  on public.income for insert
+  with check (auth.uid() = user_id);
+
+create policy "Users can update their own income"
+  on public.income for update
+  using (auth.uid() = user_id);
+
+create policy "Users can delete their own income"
+  on public.income for delete
   using (auth.uid() = user_id);
 
 -- INSTALLMENTS policies

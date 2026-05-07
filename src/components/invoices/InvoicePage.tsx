@@ -54,36 +54,31 @@ type Props = {
   cards: Card[];
   month: number;
   year: number;
+  cardId?: string;
+  periodType?: string;
+  quarter?: string;
+  dateFrom?: string;
+  dateTo?: string;
 };
-
-const MONTHS = [
-  "Janeiro",
-  "Fevereiro",
-  "Março",
-  "Abril",
-  "Maio",
-  "Junho",
-  "Julho",
-  "Agosto",
-  "Setembro",
-  "Outubro",
-  "Novembro",
-  "Dezembro",
-];
 
 export function InvoicePage({
   cards,
   month,
   year,
+  cardId,
+  periodType,
+  quarter,
+  dateFrom,
+  dateTo,
 }: Props) {
   const [page, setPage] = useState(1);
   const [installments, setInstallments] = useState<Installment[]>([]);
   const [loading, setLoading] = useState(false);
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, hasMore: false });
-  const [activeCard, setActiveCard] = useState<string>("all");
+  const [activeCard, setActiveCard] = useState<string>(cardId || "all");
   const [groupMode, setGroupMode] = useState<GroupMode>("category");
   const [filterOpen, setFilterOpen] = useState(false);
-  const [localCard, setLocalCard] = useState("all");
+  const [localCard, setLocalCard] = useState(cardId || "all");
   const currentMonth = month;
   const currentYear = year;
   const router = useRouter();
@@ -94,9 +89,19 @@ export function InvoicePage({
   const fetchInstallments = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch(
-        `/api/invoices/${activeCard}/${currentYear}/${currentMonth}?page=${page}&limit=20`
-      );
+      const params = new URLSearchParams();
+      params.append('month', String(currentMonth));
+      params.append('year', String(currentYear));
+      params.append('page', String(page));
+      params.append('limit', '20');
+      params.append('card_id', activeCard);
+
+      if (periodType) params.append('period_type', periodType);
+      if (quarter) params.append('quarter', String(quarter));
+      if (dateFrom) params.append('date_from', dateFrom);
+      if (dateTo) params.append('date_to', dateTo);
+
+      const response = await fetch(`/api/invoices?${params.toString()}`);
       const result = await response.json();
 
       setInstallments(result.data || []);
@@ -108,7 +113,7 @@ export function InvoicePage({
     } finally {
       setLoading(false);
     }
-  }, [activeCard, currentMonth, currentYear, page]);
+  }, [activeCard, currentMonth, currentYear, page, periodType, quarter, dateFrom, dateTo]);
 
   // Buscar parcelas quando mês/ano/cartão/page mudam
   useEffect(() => {
@@ -120,29 +125,13 @@ export function InvoicePage({
     setPage(1);
   }, [activeCard, currentMonth, currentYear]);
 
-  function prevMonth() {
-    const params = new URLSearchParams(searchParams.toString());
-    if (currentMonth === 1) {
-      params.set("month", "12");
-      params.set("year", String(currentYear - 1));
-    } else {
-      params.set("month", String(currentMonth - 1));
-      params.set("year", String(currentYear));
+  // Sincronizar cardId com activeCard quando props mudam
+  useEffect(() => {
+    if (cardId !== undefined) {
+      setActiveCard(cardId);
+      setLocalCard(cardId);
     }
-    router.push(`${pathname}?${params.toString()}`);
-  }
-
-  function nextMonth() {
-    const params = new URLSearchParams(searchParams.toString());
-    if (currentMonth === 12) {
-      params.set("month", "1");
-      params.set("year", String(currentYear + 1));
-    } else {
-      params.set("month", String(currentMonth + 1));
-      params.set("year", String(currentYear));
-    }
-    router.push(`${pathname}?${params.toString()}`);
-  }
+  }, [cardId]);
 
   // Total da fatura filtrada
   const total = installments.reduce((acc, i) => acc + i.amount, 0);
@@ -229,47 +218,23 @@ export function InvoicePage({
   }
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <div className="mx-auto max-w-3xl">
       <div className="mb-5 flex flex-col gap-2">
-        <div className="flex items-center gap-2 flex-wrap">
-          <h1 className="text-lg font-medium">Fatura mensal</h1>
-          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-400">
-            Apenas realizados
-          </span>
-        </div>
         <p className="text-xs text-muted-foreground">
           Lançamentos agendados não entram na fatura até serem executados.
         </p>
       </div>
 
-      {/* Navegador de mês + filtro */}
-      <div className="flex items-center justify-between gap-3 mb-5">
-        <div className="flex items-center gap-1 rounded-lg border border-border bg-card px-2 py-1.5">
-          <button
-            onClick={prevMonth}
-            className="flex h-6 w-6 items-center justify-center rounded hover:bg-accent transition-colors"
-          >
-            <ChevronLeft className="h-3.5 w-3.5" />
-          </button>
-          <span className="min-w-[130px] text-center text-xs font-medium">
-            {MONTHS[currentMonth - 1]} de {currentYear}
-          </span>
-          <button
-            onClick={nextMonth}
-            className="flex h-6 w-6 items-center justify-center rounded hover:bg-accent transition-colors"
-          >
-            <ChevronRight className="h-3.5 w-3.5" />
-          </button>
-        </div>
-
+      {/* Filtro minimalista */}
+      <div className="flex items-center justify-end mb-5">
         <button
           onClick={() => { setLocalCard(activeCard); setFilterOpen(true); }}
-          className="relative flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2.5 text-xs font-medium hover:bg-accent transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
         >
-          <SlidersHorizontal className="h-3.5 w-3.5" />
+          <SlidersHorizontal className="h-4 w-4" />
           Filtrar
           {activeCard !== "all" && (
-            <span className="absolute -top-2 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+            <span className="ml-1 text-xs px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground">
               1
             </span>
           )}

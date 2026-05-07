@@ -72,6 +72,12 @@ export function RecurringFormDialog({ open, onClose, recurring, onSaved }: Props
 
   const dayOfMonthValue = form.watch('day_of_month')
 
+  function formatDateToBR(dateStr: string) {
+    if (!dateStr) return ''
+    const [year, month, day] = dateStr.split('-')
+    return `${day}/${month}/${year}`
+  }
+
   function computeNextFromToday(dayOfMonth: number) {
     try {
       const now = new Date()
@@ -267,7 +273,7 @@ export function RecurringFormDialog({ open, onClose, recurring, onSaved }: Props
                 </button>
               </div>
               <div className="relative">
-                <Input value={computeNextFromToday(form.watch('day_of_month'))} readOnly />
+                <Input value={formatDateToBR(computeNextFromToday(form.watch('day_of_month')))} readOnly />
                 {helpOpen && (
                   <div className="absolute left-0 top-full z-10 mt-2 max-w-[280px] rounded-md border bg-popover px-3 py-2 text-xs text-popover-foreground shadow-md">
                     Calculada a partir do dia do mês selecionado e da data atual.

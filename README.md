@@ -22,14 +22,17 @@
 
 - 💳 **Credit card management** — register cards with closing day, due date and spending limit
 - 📦 **Installment tracking** — add a purchase in N installments and the app distributes each parcel across the correct invoice months automatically
+- 💰 **Income tracking** — register income from multiple sources (salary, freelance, investments, gifts) with categories and persons
 - 🔁 **Recurring transactions** — set up monthly bills (rent, subscriptions, etc.) and transactions are created automatically on each due date
 - 📅 **Scheduled transactions** — register future expenses in advance; they are published automatically when the date arrives
 - 🗂️ **Categories** — create custom categories with icon and color
 - 👥 **Spending by person** — tag expenses to a specific person (e.g. a family member using your card) and see how much they owe you
 - 📊 **Dashboard with charts** — monthly overview with spending trends, category breakdown and month-over-month comparison
 - 🧾 **Monthly invoice view** — browse each card's invoice by month, mark installments as paid
+- 📅 **Advanced period selection** — view data by month, quarter, year, or custom date ranges
 - 🔐 **Authentication** — secure login via Supabase Auth (email/password and OAuth)
 - 🌙 **Dark mode** — fully supported
+- 📱 **Fully responsive** — optimized for mobile, tablet and desktop
 
 ---
 
@@ -116,23 +119,19 @@ FinanceControl/
 │   │   ├── (app)/                      # Route group — authenticated layout
 │   │   │   ├── layout.tsx              # Sidebar + Navbar + TransactionProcessor
 │   │   │   ├── dashboard/page.tsx      # Charts and monthly summary
-│   │   │   ├── transactions/page.tsx   # Expense list with filters
+│   │   │   ├── transactions/page.tsx   # Expense and income tracking with tabs
 │   │   │   ├── invoices/page.tsx       # Monthly invoice per card
 │   │   │   ├── recurring/page.tsx      # Recurring bills management
 │   │   │   ├── cards/page.tsx          # Card management
 │   │   │   ├── categories/page.tsx     # Category management
 │   │   │   └── people/page.tsx         # People management
 │   │   ├── api/                        # API Routes (backend)
-│   │   │   ├── transactions/
-│   │   │   │   ├── route.ts            # GET (list), POST (create)
-│   │   │   │   └── [id]/route.ts       # PATCH, DELETE
+│   │   │   ├── transactions/           # Expense endpoints with period filters
+│   │   │   ├── income/                 # Income endpoints with period filters
+│   │   │   ├── invoices/               # Invoice endpoints with query params
 │   │   │   ├── recurring-transactions/
-│   │   │   │   ├── route.ts            # GET (list), POST (create)
-│   │   │   │   └── [id]/route.ts       # PATCH, DELETE
-│   │   │   ├── process-transactions/
-│   │   │   │   └── route.ts            # POST — auto-processes recurring and scheduled
-│   │   │   ├── invoices/[cardId]/[year]/[month]/route.ts
-│   │   │   ├── installments/[id]/route.ts
+│   │   │   ├── process-transactions/   # Auto-processes recurring and scheduled
+│   │   │   ├── installments/
 │   │   │   ├── cards/
 │   │   │   ├── categories/
 │   │   │   └── people/
@@ -140,12 +139,13 @@ FinanceControl/
 │   │   └── page.tsx                    # Root — redirects to /dashboard
 │   ├── components/
 │   │   ├── ui/                         # shadcn/ui base components
-│   │   ├── transactions/               # TransactionForm, TransactionList, TransactionPanel
-│   │   ├── recurring/                  # RecurringFormDialog, RecurringList
-│   │   ├── invoices/                   # InvoicePage, InstallmentRow
-│   │   ├── dashboard/                  # SummaryCards, CategoryBreakdown, charts
-│   │   ├── layout/                     # Sidebar, Navbar
-│   │   └── TransactionProcessor.tsx    # Silent client component — triggers auto-processing on load
+│   │   ├── transactions/               # Transaction list and filters
+│   │   ├── income/                     # Income list and forms
+│   │   ├── invoices/                   # Invoice view and installments
+│   │   ├── recurring/                  # Recurring transactions management
+│   │   ├── dashboard/                  # Dashboard charts and metrics
+│   │   ├── layout/                     # Sidebar and Navbar
+│   │   └── TransactionProcessor.tsx    # Auto-processes recurring/scheduled transactions
 │   ├── providers/
 │   │   ├── TransactionDataProvider.tsx # Context: cards, categories, people for forms
 │   │   └── TransactionPanelProvider.tsx# Context: sliding panel open/close state
@@ -278,14 +278,17 @@ MIT — see [LICENSE](LICENSE) for details.
 
 - 💳 **Gestão de cartões** — cadastre cartões com dia de fechamento, vencimento e limite
 - 📦 **Controle de parcelas** — lance uma compra em N vezes e o app distribui cada parcela nos meses corretos automaticamente
+- 💰 **Registro de entradas** — registre receitas de várias fontes (salário, freela, investimentos, presentes) com categorias e pessoas
 - 🔁 **Transações recorrentes** — configure contas mensais fixas (aluguel, assinaturas) e as transações são criadas automaticamente a cada vencimento
 - 📅 **Transações agendadas** — registre despesas futuras com antecedência; elas são publicadas automaticamente quando a data chega
 - 🗂️ **Categorias** — crie categorias personalizadas com ícone e cor
 - 👥 **Gastos por pessoa** — vincule despesas a uma pessoa específica (ex: familiar usando seu cartão) e veja quanto ela te deve
 - 📊 **Dashboard com gráficos** — visão mensal com tendências de gasto, breakdown por categoria e comparativo mês a mês
 - 🧾 **Fatura mensal** — navegue pela fatura de cada cartão por mês e marque parcelas como pagas
+- 📅 **Seletor avançado de período** — visualize dados por mês, trimestre, ano ou intervalo de datas customizado
 - 🔐 **Autenticação** — login seguro via Supabase Auth (email/senha e OAuth)
 - 🌙 **Modo escuro** — suporte completo
+- 📱 **Responsivo** — otimizado para mobile, tablet e desktop
 
 ## Como rodar localmente
 
