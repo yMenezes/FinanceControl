@@ -1,41 +1,40 @@
 import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { TransactionDataProvider } from '@/providers/TransactionDataProvider'
-import { RecurringList } from '@/components/recurring/RecurringList'
+import { RecurringIncomeList } from '@/components/recurring-income/RecurringIncomeList'
 import { RecurringListSkeleton } from '@/components/recurring/RecurringListSkeleton'
 
-async function RecurringContent() {
+async function RecurringIncomeContent() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
-  const [cardsRes, catsRes, peopleRes] = await Promise.all([
-    supabase.from('cards').select('id, name').is('deleted_at', null).eq('user_id', user.id),
+  const [catsRes, peopleRes] = await Promise.all([
     supabase.from('categories').select('id, name, icon').is('deleted_at', null).eq('user_id', user.id),
     supabase.from('people').select('id, name').is('deleted_at', null).eq('user_id', user.id),
   ])
 
   return (
     <TransactionDataProvider
-      cards={cardsRes.data ?? []}
+      cards={[]}
       categories={catsRes.data ?? []}
       people={peopleRes.data ?? []}
     >
       <div className="mx-auto max-w-3xl">
-        <h1 className="mb-2 text-lg font-medium">Recorrências</h1>
+        <h1 className="mb-2 text-lg font-medium">Entradas Recorrentes</h1>
         <p className="mb-6 text-sm text-muted-foreground">
-          Cadastre regras para entradas e saídas que geram lançamentos futuros de forma repetida.
+          Cadastre regras que geram entradas de forma repetida automaticamente.
         </p>
-        <RecurringList />
+        <RecurringIncomeList />
       </div>
     </TransactionDataProvider>
   )
 }
 
-export default function RecurringPage() {
+export default function RecurringIncomePage() {
   return (
     <Suspense fallback={<RecurringListSkeleton />}>
-      <RecurringContent />
+      <RecurringIncomeContent />
     </Suspense>
   )
 }

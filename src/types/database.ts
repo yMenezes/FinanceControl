@@ -25,6 +25,7 @@ export type Database = {
           user_id: string
           category_id: string | null
           person_id: string | null
+          recurring_income_id: string | null
           description: string
           amount: number
           date: string
@@ -39,6 +40,7 @@ export type Database = {
           user_id: string
           category_id?: string | null
           person_id?: string | null
+          recurring_income_id?: string | null
           description: string
           amount: number
           date: string
@@ -53,6 +55,7 @@ export type Database = {
           user_id?: string
           category_id?: string | null
           person_id?: string | null
+          recurring_income_id?: string | null
           description?: string
           amount?: number
           date?: string
@@ -230,6 +233,65 @@ export type Database = {
           deleted_at?: string | null
         }
       }
+      recurring_income: {
+        Row: {
+          id: string
+          user_id: string
+          description: string
+          amount: number
+          source: IncomeSource
+          day_of_month: number
+          start_date: string
+          end_date: string | null
+          next_run_date: string
+          last_run_date: string | null
+          active: boolean
+          category_id: string | null
+          person_id: string | null
+          notes: string | null
+          created_at: string
+          updated_at: string
+          deleted_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          description: string
+          amount: number
+          source: IncomeSource
+          day_of_month: number
+          start_date: string
+          end_date?: string | null
+          next_run_date: string
+          last_run_date?: string | null
+          active?: boolean
+          category_id?: string | null
+          person_id?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+          deleted_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          description?: string
+          amount?: number
+          source?: IncomeSource
+          day_of_month?: number
+          start_date?: string
+          end_date?: string | null
+          next_run_date?: string
+          last_run_date?: string | null
+          active?: boolean
+          category_id?: string | null
+          person_id?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+          deleted_at?: string | null
+        }
+      }
       transactions: {
         Row: {
           id: string
@@ -367,6 +429,10 @@ export type PersonUpdate = Database['public']['Tables']['people']['Update']
 export type RecurringTransaction = Database['public']['Tables']['recurring_transactions']['Row']
 export type RecurringTransactionInsert = Database['public']['Tables']['recurring_transactions']['Insert']
 export type RecurringTransactionUpdate = Database['public']['Tables']['recurring_transactions']['Update']
+
+export type RecurringIncome = Database['public']['Tables']['recurring_income']['Row']
+export type RecurringIncomeInsert = Database['public']['Tables']['recurring_income']['Insert']
+export type RecurringIncomeUpdate = Database['public']['Tables']['recurring_income']['Update']
 
 export type Transaction = Database['public']['Tables']['transactions']['Row']
 export type TransactionInsert = Database['public']['Tables']['transactions']['Insert']

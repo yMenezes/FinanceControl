@@ -7,11 +7,12 @@ async function getDashboardSummary(): Promise<CashFlowSummary> {
 }
 
 export async function SummaryCards() {
-  const { income, expenses, expensesPaid, recurringTotal, scheduledTotal } = await getDashboardSummary()
+  const { income, expenses, expensesPaid, recurringTotal, scheduledTotal, recurringIncomeTotal } = await getDashboardSummary()
 
-  // Calculate balances
+  // Saldo Atual: only real money that has already happened
   const currentBalance = income - expensesPaid
-  const forecastBalance = income - (expenses + recurringTotal + scheduledTotal)
+  // Saldo Previsto: includes recurring income and all planned expenses
+  const forecastBalance = (income + recurringIncomeTotal) - (expenses + recurringTotal + scheduledTotal)
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">

@@ -9,6 +9,7 @@ export type CashFlowSummary = {
   expensesPaid: number
   recurringTotal: number
   scheduledTotal: number
+  recurringIncomeTotal: number
 }
 
 export type CashFlowHistory = {
@@ -92,12 +93,31 @@ export async function getCashFlowSummary(): Promise<CashFlowSummary> {
 
   const scheduledTotal = (scheduledData ?? []).reduce((sum, item) => sum + item.total_amount, 0)
 
+  // Recurring income active for this month
+  const { data: recurringIncomeData } = await supabase
+    .from('recurring_income')
+    .select('amount, day_of_month, start_date, end_date')
+    .eq('user_id', user.id)
+    .eq('active', true)
+    .is('deleted_at', null)
+    .lte('start_date', monthEnd)
+    .or(`end_date.is.null,end_date.gte.${monthStart}`)
+
+  let recurringIncomeTotal = 0
+  recurringIncomeData?.forEach((recurringIncome: any) => {
+    const dayOfMonth = recurringIncome.day_of_month
+    if (dayOfMonth >= 1 && dayOfMonth <= 31) {
+      recurringIncomeTotal += recurringIncome.amount
+    }
+  })
+
   return {
     income,
     expenses,
     expensesPaid,
     recurringTotal,
     scheduledTotal,
+    recurringIncomeTotal,
   }
 }
 
