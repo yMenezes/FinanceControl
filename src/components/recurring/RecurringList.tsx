@@ -117,7 +117,7 @@ export function RecurringList() {
             }`}
           >
             <TrendingDown className="h-4 w-4" />
-            Saídas Recorrentes
+            Gastos Recorrentes
           </button>
           <button
             onClick={() => setActiveTab('income')}
@@ -128,12 +128,12 @@ export function RecurringList() {
             }`}
           >
             <TrendingUp className="h-4 w-4" />
-            Entradas Recorrentes
+            Rendas Recorrentes
           </button>
         </div>
 
         <AddButton 
-          label={activeTab === 'income' ? 'Adicionar ganho recorrente' : 'Adicionar gasto recorrente'} 
+          label={activeTab === 'income' ? 'Adicionar renda recorrente' : 'Adicionar gasto recorrente'} 
           onClick={openCreate} 
         />
 

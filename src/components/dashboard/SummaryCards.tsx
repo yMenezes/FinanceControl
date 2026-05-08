@@ -9,8 +9,8 @@ async function getDashboardSummary(): Promise<CashFlowSummary> {
 export async function SummaryCards() {
   const { income, expenses, expensesPaid, recurringTotal, scheduledTotal, recurringIncomeTotal } = await getDashboardSummary()
 
-  // Saldo Atual: only real money that has already happened
-  const currentBalance = income - expensesPaid
+  // Saldo Atual: Entradas - Saídas lançadas no período
+  const currentBalance = income - expenses
   // Saldo Previsto: includes recurring income and all planned expenses
   const forecastBalance = (income + recurringIncomeTotal) - (expenses + recurringTotal + scheduledTotal)
 
@@ -20,7 +20,7 @@ export async function SummaryCards() {
       <div className="bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 rounded-xl border border-emerald-200/50 dark:border-emerald-800/50 p-6 hover:shadow-md transition-all overflow-hidden">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-muted-foreground">Entradas</p>
+            <p className="text-sm font-medium text-muted-foreground">Rendas</p>
             <p className="text-3xl font-bold mt-3 text-emerald-600 dark:text-emerald-400 truncate">{formatCurrency(income)}</p>
             <p className="text-xs text-muted-foreground mt-3">Este mês</p>
           </div>
@@ -34,7 +34,7 @@ export async function SummaryCards() {
       <div className="bg-gradient-to-br from-rose-500/10 to-rose-500/5 rounded-xl border border-rose-200/50 dark:border-rose-800/50 p-6 hover:shadow-md transition-all overflow-hidden">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-muted-foreground">Saídas</p>
+            <p className="text-sm font-medium text-muted-foreground">Gastos</p>
             <p className="text-3xl font-bold mt-3 text-rose-600 dark:text-rose-400 truncate">{formatCurrency(expenses)}</p>
             <p className="text-xs text-muted-foreground mt-3">Despesas postadas</p>
           </div>
@@ -52,7 +52,7 @@ export async function SummaryCards() {
             <p className={`text-3xl font-bold mt-3 truncate ${currentBalance >= 0 ? 'text-purple-600 dark:text-purple-400' : 'text-red-600 dark:text-red-400'}`}>
               {formatCurrency(currentBalance)}
             </p>
-            <p className="text-xs text-muted-foreground mt-3">Entradas - Saídas pagas</p>
+            <p className="text-xs text-muted-foreground mt-3">Entradas - Saídas</p>
           </div>
           <div className="opacity-10 shrink-0">
             <Wallet className="w-10 h-10" />

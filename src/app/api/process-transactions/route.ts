@@ -111,7 +111,7 @@ export async function POST() {
     .is('deleted_at', null)
 
   for (const rt of (recurringList ?? [])) {
-    let closingDay = 1
+    let closingDay = 0
     if (rt.card_id) {
       const { data: card } = await supabase
         .from('cards')
@@ -229,7 +229,7 @@ export async function POST() {
       continue
     }
 
-    let closingDay = 1
+    let closingDay = 0
     if (tx.card_id) {
       const { data: card } = await supabase
         .from('cards')
@@ -266,6 +266,7 @@ export async function POST() {
   }
 
   revalidatePath('/invoices')
+  revalidatePath('/dashboard')
   revalidatePath('/transactions')
   revalidatePath('/recurring')
   revalidatePath('/recurring-income')

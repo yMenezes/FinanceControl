@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { recurringIncomeCreateSchema } from '@/lib/validations'
 import { NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import type { RecurringIncomeWithRelations } from '@/types/database'
 
 type RecurringIncomeWithRelations = {
@@ -131,14 +132,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    // Revalidate path
-    try {
-      import('next/cache').then(({ revalidatePath }) => {
-        revalidatePath('/recurring-income')
-      })
-    } catch {
-      // Silently ignore if revalidatePath fails
-    }
+    revalidatePath('/recurring-income')
+    revalidatePath('/dashboard')
 
     return NextResponse.json(data, { status: 201 })
   } catch (error: any) {
