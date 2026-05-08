@@ -1,14 +1,20 @@
 import { Suspense } from 'react'
 import { SummaryCards, SummaryCardsSkeleton } from '@/components/dashboard/SummaryCards'
+import { CashFlowChart, CashFlowChartSkeleton } from '@/components/dashboard/CashFlowChart'
 import { CategoryBreakdown, CategoryBreakdownSkeleton } from '@/components/dashboard/CategoryBreakdown'
 import { UpcomingRecurring, UpcomingRecurringSkeleton } from '@/components/dashboard/UpcomingRecurring'
 import { RecentTransactions, RecentTransactionsSkeleton } from '@/components/dashboard/RecentTransactions'
 import { MonthlySummary, MonthlySummarySkeleton } from '@/components/dashboard/MonthlySummary'
-import { getCategoryBreakdownData } from '@/components/dashboard/queries'
+import { getCategoryBreakdownData, getCashFlowHistory } from '@/components/dashboard/queries'
 
 async function CategoryBreakdownWrapper() {
   const data = await getCategoryBreakdownData()
   return <CategoryBreakdown data={data} />
+}
+
+async function CashFlowChartWrapper() {
+  const data = await getCashFlowHistory()
+  return <CashFlowChart data={data} />
 }
 
 export const revalidate = 3600
@@ -24,6 +30,11 @@ export default function DashboardPage() {
       {/* Summary Cards */}
       <Suspense fallback={<SummaryCardsSkeleton />}>
         <SummaryCards />
+      </Suspense>
+
+      {/* Cash Flow Chart */}
+      <Suspense fallback={<CashFlowChartSkeleton />}>
+        <CashFlowChartWrapper />
       </Suspense>
 
       {/* Middle row: Category Breakdown (2/3) + Upcoming Recurring (1/3) */}
