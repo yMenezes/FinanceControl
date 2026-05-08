@@ -3,6 +3,169 @@ import { CategoryData } from './CategoryBreakdown'
 import { TrendData } from './SpendingTrend'
 import { ComparisonData } from './MonthComparison'
 
+export type CashFlowSummary = {
+  income: number
+  expenses: number
+  expensesPaid: number
+  recurringTotal: number
+  scheduledTotal: number
+}
+
+export type CashFlowHistory = {
+  month: string
+  year: number
+  income: number
+  expenses: number
+}
+
+export async function getCashFlowSummary(): Promise<CashFlowSummary> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) throw new Error('User not found')
+
+  const now = new Date()
+  const currentMonth = now.getMonth() + 1
+  const currentYear = now.getFullYear()
+  const monthStart = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`
+  const monthEnd = new Date(currentYear, currentMonth, 0).toISOString().split('T')[0]
+
+  // Income for current month
+  const { data: incomeData } = await supabase
+    .from('income')
+    .select('amount')
+    .eq('user_id', user.id)
+    .gte('date', monthStart)
+    .lte('date', monthEnd)
+    .is('deleted_at', null)
+
+  const income = (incomeData ?? []).reduce((sum, item) => sum + item.amount, 0)
+
+  // Total expenses (all posted installments this month)
+  const { data: expensesData } = await supabase
+    .from('installments')
+    .select('amount, transactions!inner(status)')
+    .eq('transactions.status', 'posted')
+    .eq('reference_month', currentMonth)
+    .eq('reference_year', currentYear)
+
+  const expenses = (expensesData ?? []).reduce((sum, item) => sum + item.amount, 0)
+
+  // Paid expenses only (installments where paid=true)
+  const { data: expensesPaidData } = await supabase
+    .from('installments')
+    .select('amount, transactions!inner(status)')
+    .eq('transactions.status', 'posted')
+    .eq('paid', true)
+    .eq('reference_month', currentMonth)
+    .eq('reference_year', currentYear)
+
+  const expensesPaid = (expensesPaidData ?? []).reduce((sum, item) => sum + item.amount, 0)
+
+  // Recurring transactions active for this month
+  const { data: recurringData } = await supabase
+    .from('recurring_transactions')
+    .select('total_amount, day_of_month, start_date, end_date')
+    .eq('user_id', user.id)
+    .eq('active', true)
+    .is('deleted_at', null)
+    .lte('start_date', monthEnd)
+    .or(`end_date.is.null,end_date.gte.${monthStart}`)
+
+  let recurringTotal = 0
+  recurringData?.forEach((recurring: any) => {
+    const dayOfMonth = recurring.day_of_month
+    if (dayOfMonth >= 1 && dayOfMonth <= 31) {
+      recurringTotal += recurring.total_amount
+    }
+  })
+
+  // Scheduled transactions for this month
+  const { data: scheduledData } = await supabase
+    .from('transactions')
+    .select('total_amount')
+    .eq('user_id', user.id)
+    .eq('status', 'scheduled')
+    .gte('scheduled_for', monthStart)
+    .lte('scheduled_for', monthEnd)
+    .is('deleted_at', null)
+
+  const scheduledTotal = (scheduledData ?? []).reduce((sum, item) => sum + item.total_amount, 0)
+
+  return {
+    income,
+    expenses,
+    expensesPaid,
+    recurringTotal,
+    scheduledTotal,
+  }
+}
+
+export async function getCashFlowHistory(): Promise<CashFlowHistory[]> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) throw new Error('User not found')
+
+  const now = new Date()
+  const months: CashFlowHistory[] = []
+
+  // Calculate date range for last 6 months
+  const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1)
+  const monthStart = `${sixMonthsAgo.getFullYear()}-${String(sixMonthsAgo.getMonth() + 1).padStart(2, '0')}-01`
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0]
+
+  // Query 1: Get ALL income for last 6 months (single query)
+  const { data: incomeData } = await supabase
+    .from('income')
+    .select('amount, date')
+    .eq('user_id', user.id)
+    .gte('date', monthStart)
+    .lte('date', monthEnd)
+    .is('deleted_at', null)
+
+  // Query 2: Get ALL expenses for last 6 months (single query)
+  const { data: expensesData } = await supabase
+    .from('installments')
+    .select('amount, reference_month, reference_year, transactions!inner(status)')
+    .eq('transactions.status', 'posted')
+    .gte('reference_year', sixMonthsAgo.getFullYear())
+    .lte('reference_year', now.getFullYear())
+
+  // Aggregate income by month in JavaScript
+  const incomeByMonth: Record<string, number> = {}
+  incomeData?.forEach((item: any) => {
+    const date = new Date(item.date)
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+    incomeByMonth[key] = (incomeByMonth[key] ?? 0) + item.amount
+  })
+
+  // Aggregate expenses by month in JavaScript
+  const expensesByMonth: Record<string, number> = {}
+  expensesData?.forEach((item: any) => {
+    const key = `${item.reference_year}-${String(item.reference_month).padStart(2, '0')}`
+    expensesByMonth[key] = (expensesByMonth[key] ?? 0) + item.amount
+  })
+
+  // Build result for last 6 months
+  for (let i = 5; i >= 0; i--) {
+    const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    const month = date.getMonth() + 1
+    const year = date.getFullYear()
+    const key = `${year}-${String(month).padStart(2, '0')}`
+
+    const monthName = date.toLocaleDateString('pt-BR', { month: '2-digit', year: '2-digit' })
+    months.push({
+      month: monthName,
+      year,
+      income: incomeByMonth[key] ?? 0,
+      expenses: expensesByMonth[key] ?? 0,
+    })
+  }
+
+  return months
+}
+
 export async function getCategoryBreakdownData(): Promise<CategoryData[]> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
