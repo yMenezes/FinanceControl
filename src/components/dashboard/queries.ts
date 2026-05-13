@@ -9,6 +9,7 @@ export type CashFlowSummary = {
   expensesPaid: number
   recurringTotal: number
   scheduledTotal: number
+  recurringIncomeTotal: number
 }
 
 export type CashFlowHistory = {
@@ -18,17 +19,29 @@ export type CashFlowHistory = {
   expenses: number
 }
 
-export async function getCashFlowSummary(): Promise<CashFlowSummary> {
+function toLocalDateString(date: Date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function getMonthBounds(baseDate: Date = new Date()) {
+  const monthStart = toLocalDateString(new Date(baseDate.getFullYear(), baseDate.getMonth(), 1))
+  const monthEnd = toLocalDateString(new Date(baseDate.getFullYear(), baseDate.getMonth() + 1, 0))
+  return { monthStart, monthEnd }
+}
+
+export async function getCashFlowSummary(baseDate?: Date | string): Promise<CashFlowSummary> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) throw new Error('User not found')
 
-  const now = new Date()
+  const now = baseDate ? (baseDate instanceof Date ? baseDate : new Date(baseDate)) : new Date()
   const currentMonth = now.getMonth() + 1
   const currentYear = now.getFullYear()
-  const monthStart = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`
-  const monthEnd = new Date(currentYear, currentMonth, 0).toISOString().split('T')[0]
+  const { monthStart, monthEnd } = getMonthBounds(now)
 
   // Income for current month
   const { data: incomeData } = await supabase
@@ -44,8 +57,9 @@ export async function getCashFlowSummary(): Promise<CashFlowSummary> {
   // Total expenses (all posted installments this month)
   const { data: expensesData } = await supabase
     .from('installments')
-    .select('amount, transactions!inner(status)')
+    .select('amount, transactions!inner(status, user_id)')
     .eq('transactions.status', 'posted')
+    .eq('transactions.user_id', user.id)
     .eq('reference_month', currentMonth)
     .eq('reference_year', currentYear)
 
@@ -54,8 +68,9 @@ export async function getCashFlowSummary(): Promise<CashFlowSummary> {
   // Paid expenses only (installments where paid=true)
   const { data: expensesPaidData } = await supabase
     .from('installments')
-    .select('amount, transactions!inner(status)')
+    .select('amount, transactions!inner(status, user_id)')
     .eq('transactions.status', 'posted')
+    .eq('transactions.user_id', user.id)
     .eq('paid', true)
     .eq('reference_month', currentMonth)
     .eq('reference_year', currentYear)
@@ -92,28 +107,47 @@ export async function getCashFlowSummary(): Promise<CashFlowSummary> {
 
   const scheduledTotal = (scheduledData ?? []).reduce((sum, item) => sum + item.total_amount, 0)
 
+  // Recurring income active for this month
+  const { data: recurringIncomeData } = await supabase
+    .from('recurring_income')
+    .select('amount, day_of_month, start_date, end_date')
+    .eq('user_id', user.id)
+    .eq('active', true)
+    .is('deleted_at', null)
+    .lte('start_date', monthEnd)
+    .or(`end_date.is.null,end_date.gte.${monthStart}`)
+
+  let recurringIncomeTotal = 0
+  recurringIncomeData?.forEach((recurringIncome: any) => {
+    const dayOfMonth = recurringIncome.day_of_month
+    if (dayOfMonth >= 1 && dayOfMonth <= 31) {
+      recurringIncomeTotal += recurringIncome.amount
+    }
+  })
+
   return {
     income,
     expenses,
     expensesPaid,
     recurringTotal,
     scheduledTotal,
+    recurringIncomeTotal,
   }
 }
 
-export async function getCashFlowHistory(): Promise<CashFlowHistory[]> {
+export async function getCashFlowHistory(baseDate?: Date | string): Promise<CashFlowHistory[]> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) throw new Error('User not found')
 
-  const now = new Date()
+  const now = baseDate ? (baseDate instanceof Date ? baseDate : new Date(baseDate)) : new Date()
   const months: CashFlowHistory[] = []
 
   // Calculate date range for last 6 months
   const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1)
-  const monthStart = `${sixMonthsAgo.getFullYear()}-${String(sixMonthsAgo.getMonth() + 1).padStart(2, '0')}-01`
-  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0]
+  const monthStart = toLocalDateString(sixMonthsAgo)
+  const monthEnd = getMonthBounds(now).monthEnd
 
   // Query 1: Get ALL income for last 6 months (single query)
   const { data: incomeData } = await supabase
@@ -127,8 +161,9 @@ export async function getCashFlowHistory(): Promise<CashFlowHistory[]> {
   // Query 2: Get ALL expenses for last 6 months (single query)
   const { data: expensesData } = await supabase
     .from('installments')
-    .select('amount, reference_month, reference_year, transactions!inner(status)')
+    .select('amount, reference_month, reference_year, transactions!inner(status, user_id)')
     .eq('transactions.status', 'posted')
+    .eq('transactions.user_id', user.id)
     .gte('reference_year', sixMonthsAgo.getFullYear())
     .lte('reference_year', now.getFullYear())
 
@@ -166,21 +201,21 @@ export async function getCashFlowHistory(): Promise<CashFlowHistory[]> {
   return months
 }
 
-export async function getCategoryBreakdownData(): Promise<CategoryData[]> {
+export async function getCategoryBreakdownData(baseDate?: Date | string): Promise<CategoryData[]> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-
   if (!user) throw new Error('User not found')
 
-  const now = new Date()
+  const now = baseDate ? (baseDate instanceof Date ? baseDate : new Date(baseDate)) : new Date()
   const currentMonth = now.getMonth() + 1
   const currentYear = now.getFullYear()
 
   // Get all installments this month with category info and color
   const { data: thisMonthData } = await supabase
     .from('installments')
-    .select('amount, transactions!inner(status, categories!inner(name, color))')
+    .select('amount, transactions!inner(status, user_id, categories!inner(name, color))')
     .eq('transactions.status', 'posted')
+    .eq('transactions.user_id', user.id)
     .eq('reference_month', currentMonth)
     .eq('reference_year', currentYear)
 
@@ -219,8 +254,9 @@ export async function getSpendingTrendData(): Promise<TrendData[]> {
 
   const { data: allData } = await supabase
     .from('installments')
-    .select('amount, reference_month, reference_year, transactions!inner(status)')
+    .select('amount, reference_month, reference_year, transactions!inner(status, user_id)')
     .eq('transactions.status', 'posted')
+    .eq('transactions.user_id', user.id)
 
   // Group by week
   const weekMap = new Map<string, number>()
@@ -269,8 +305,9 @@ export async function getMonthComparisonData(): Promise<ComparisonData[]> {
   // Get categories for current month
   const { data: thisMonthData } = await supabase
     .from('installments')
-    .select('amount, transactions!inner(status, categories!inner(name))')
+    .select('amount, transactions!inner(status, user_id, categories!inner(name))')
     .eq('transactions.status', 'posted')
+    .eq('transactions.user_id', user.id)
     .eq('reference_month', currentMonth)
     .eq('reference_year', currentYear)
 
@@ -283,8 +320,9 @@ export async function getMonthComparisonData(): Promise<ComparisonData[]> {
   // Get categories for last month
   const { data: lastMonthData } = await supabase
     .from('installments')
-    .select('amount, transactions!inner(status, categories!inner(name))')
+    .select('amount, transactions!inner(status, user_id, categories!inner(name))')
     .eq('transactions.status', 'posted')
+    .eq('transactions.user_id', user.id)
     .eq('reference_month', lastMonth)
     .eq('reference_year', lastMonthYear)
 
