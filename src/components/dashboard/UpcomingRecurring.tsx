@@ -3,82 +3,47 @@ import { formatCurrency } from '@/lib/utils'
 import Link from 'next/link'
 import { NewRecurringButton } from './NewRecurringButton'
 
-type UpcomingItem = {
+type RecurringItem = {
   id: string
   description: string
-  amount: number
+  total_amount: number
   day_of_month: number
-  next_run_date: string
   category_color: string | null
   category_icon: string | null
-  kind: 'income' | 'expense'
 }
 
-export async function UpcomingRecurring({ month, year }: { month?: string; year?: string }) {
+export async function UpcomingRecurring() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('User not found')
 
-  const baseDate = month && year ? new Date(Number(year), Number(month) - 1, 1) : new Date()
-  const monthStart = `${baseDate.getFullYear()}-${String(baseDate.getMonth() + 1).padStart(2, '0')}-01`
-  const monthEnd = new Date(baseDate.getFullYear(), baseDate.getMonth() + 1, 0).toISOString().split('T')[0]
-
-  const [expenseRes, incomeRes, cardsRes, catsRes, peopleRes] = await Promise.all([
+  const [recurringRes, cardsRes, catsRes, peopleRes] = await Promise.all([
     supabase
       .from('recurring_transactions')
-      .select('id, description, total_amount, day_of_month, next_run_date, categories(color, icon)')
+      .select('id, description, total_amount, day_of_month, categories(color, icon)')
       .eq('user_id', user.id)
       .eq('active', true)
       .is('deleted_at', null)
-      .gte('next_run_date', monthStart)
-      .lte('next_run_date', monthEnd)
-      .order('next_run_date', { ascending: true })
-      .limit(5),
-    supabase
-      .from('recurring_income')
-      .select('id, description, amount, day_of_month, next_run_date, categories(color, icon)')
-      .eq('user_id', user.id)
-      .eq('active', true)
-      .is('deleted_at', null)
-      .gte('next_run_date', monthStart)
-      .lte('next_run_date', monthEnd)
-      .order('next_run_date', { ascending: true })
+      .order('day_of_month', { ascending: true })
       .limit(5),
     supabase.from('cards').select('id, name').is('deleted_at', null).eq('user_id', user.id),
     supabase.from('categories').select('id, name, icon').is('deleted_at', null).eq('user_id', user.id),
     supabase.from('people').select('id, name').is('deleted_at', null).eq('user_id', user.id),
   ])
 
-  const expenseItems: UpcomingItem[] = (expenseRes.data ?? []).map((item: any) => ({
+  const items: RecurringItem[] = (recurringRes.data ?? []).map((item: any) => ({
     id: item.id,
     description: item.description,
-    amount: item.total_amount,
+    total_amount: item.total_amount,
     day_of_month: item.day_of_month,
-    next_run_date: item.next_run_date,
     category_color: item.categories?.color ?? null,
     category_icon: item.categories?.icon ?? null,
-    kind: 'expense',
   }))
-
-  const incomeItems: UpcomingItem[] = (incomeRes.data ?? []).map((item: any) => ({
-    id: item.id,
-    description: item.description,
-    amount: item.amount,
-    day_of_month: item.day_of_month,
-    next_run_date: item.next_run_date,
-    category_color: item.categories?.color ?? null,
-    category_icon: item.categories?.icon ?? null,
-    kind: 'income',
-  }))
-
-  const items = [...expenseItems, ...incomeItems]
-    .sort((a, b) => new Date(`${a.next_run_date}T12:00:00`).getTime() - new Date(`${b.next_run_date}T12:00:00`).getTime())
-    .slice(0, 5)
 
   return (
     <div className="bg-gradient-to-br from-card to-card/80 rounded-xl border border-border/50 p-6 shadow-sm hover:shadow-md transition-all h-full flex flex-col">
       <div className="flex items-center justify-between mb-5">
-        <h3 className="text-lg font-semibold">Próximos lançamentos recorrentes</h3>
+        <h3 className="text-lg font-semibold">Próximas contas recorrentes</h3>
         {items.length > 0 && (
           <Link href="/recurring" className="text-xs text-primary hover:underline">
             Ver todas
@@ -95,20 +60,20 @@ export async function UpcomingRecurring({ month, year }: { month?: string; year?
           {items.map((item) => (
             <div key={item.id} className="flex items-center gap-3">
               {/* Day badge */}
-              <div className={`w-11 h-11 rounded-xl flex flex-col items-center justify-center flex-shrink-0 border ${item.kind === 'income' ? 'bg-emerald-500/10 border-emerald-200/50 dark:border-emerald-800/50' : 'bg-rose-500/10 border-rose-200/50 dark:border-rose-800/50'}`}>
-                <span className={`text-base font-bold leading-none ${item.kind === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>{item.day_of_month}</span>
-                <span className={`text-[10px] leading-none ${item.kind === 'income' ? 'text-emerald-600/60 dark:text-emerald-400/60' : 'text-rose-600/60 dark:text-rose-400/60'}`}>dia</span>
+              <div className="w-11 h-11 rounded-xl flex flex-col items-center justify-center flex-shrink-0 bg-gradient-to-br from-blue-500/10 to-blue-500/5 border border-blue-200/50 dark:border-blue-800/50">
+                <span className="text-base font-bold leading-none text-blue-600 dark:text-blue-400">{item.day_of_month}</span>
+                <span className="text-[10px] leading-none text-blue-600/60 dark:text-blue-400/60">dia</span>
               </div>
               {/* Name */}
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{item.description}</p>
-                <p className="text-xs text-muted-foreground">
-                  {item.kind === 'income' ? 'Entrada' : 'Saída'} · {item.category_icon ?? '📦'} · {new Date(`${item.next_run_date}T12:00:00`).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
-                </p>
+                {item.category_icon && (
+                  <p className="text-xs text-muted-foreground">{item.category_icon}</p>
+                )}
               </div>
               {/* Amount */}
-              <span className={`text-sm font-semibold tabular-nums flex-shrink-0 ${item.kind === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'}`}>
-                {formatCurrency(item.amount)}
+              <span className="text-sm font-semibold tabular-nums flex-shrink-0">
+                {formatCurrency(item.total_amount)}
               </span>
             </div>
           ))}

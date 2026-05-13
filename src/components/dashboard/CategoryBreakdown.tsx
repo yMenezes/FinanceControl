@@ -11,17 +11,15 @@ export type CategoryData = {
 
 interface CategoryBreakdownProps {
   data: CategoryData[]
-  baseDate?: Date | string
 }
 
 const EMPTY_DATA = [{ name: '', value: 1, color: 'hsl(var(--muted))' }]
 
-export function CategoryBreakdown({ data, baseDate }: CategoryBreakdownProps) {
+export function CategoryBreakdown({ data }: CategoryBreakdownProps) {
   const hasData = data && data.length > 0
   const chartData = hasData ? data : EMPTY_DATA
   const total = hasData ? data.reduce((sum, item) => sum + item.value, 0) : 0
-  const dateForLabel = baseDate ? (baseDate instanceof Date ? baseDate : new Date(baseDate)) : new Date()
-  const monthLabel = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(dateForLabel)
+  const monthLabel = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(new Date())
 
   return (
     <div className="bg-gradient-to-br from-card to-card/80 rounded-xl border border-border/50 p-6 shadow-sm hover:shadow-md transition-all h-full">

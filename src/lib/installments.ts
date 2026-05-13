@@ -27,13 +27,6 @@ export function getFirstInstallmentMonth(
   purchaseDate: Date,
   closingDay:   number
 ): MonthYear {
-  if (closingDay < 1) {
-    return {
-      month: purchaseDate.getMonth() + 1,
-      year: purchaseDate.getFullYear(),
-    }
-  }
-
   const day   = purchaseDate.getDate()
   const month = purchaseDate.getMonth() + 1 // JS é 0-indexed
   const year  = purchaseDate.getFullYear()

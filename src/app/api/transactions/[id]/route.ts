@@ -102,7 +102,7 @@ export async function PATCH(
     if (delError) return NextResponse.json({ error: delError.message }, { status: 500 })
 
     // Busca o closing_day do cartão (se fornecido ou usar cartão atual)
-    let closingDay = 0
+    let closingDay = 1
     const cardId = updateData.card_id
     if (cardId) {
       const { data: card } = await supabase
@@ -144,6 +144,5 @@ export async function PATCH(
   }
 
   revalidatePath('/invoices')
-  revalidatePath('/dashboard')
   return NextResponse.json({ success: true })
 }

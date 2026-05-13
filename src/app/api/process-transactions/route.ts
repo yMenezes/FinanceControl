@@ -30,76 +30,6 @@ export async function POST() {
 
   let recurringProcessed = 0
   let scheduledProcessed = 0
-  let recurringIncomeProcessed = 0
-
-  // ─── 0. Processar entradas recorrentes ────────────────────────────────────
-  const { data: recurringIncomeList } = await supabase
-    .from('recurring_income')
-    .select('*')
-    .eq('user_id', user.id)
-    .eq('active', true)
-    .lte('next_run_date', today)
-    .is('deleted_at', null)
-
-  for (const ri of (recurringIncomeList ?? [])) {
-    let currentDate = ri.next_run_date
-    let lastProcessed: string | null = ri.last_run_date
-
-    // Gera uma entrada de renda para cada mês que ficou em atraso
-    while (currentDate <= today) {
-      if (ri.end_date && currentDate > ri.end_date) break
-
-      // Proteção anti-duplicata: chave exata por UUID da entrada recorrente + data
-      const { count: existing } = await supabase
-        .from('income')
-        .select('id', { count: 'exact', head: true })
-        .eq('recurring_income_id', ri.id)
-        .eq('date', currentDate)
-        .is('deleted_at', null)
-
-      if ((existing ?? 0) > 0) {
-        currentDate = advanceByOneMonth(currentDate, ri.day_of_month)
-        continue
-      }
-
-      const { data: income } = await supabase
-        .from('income')
-        .insert({
-          user_id: user.id,
-          description: ri.description,
-          amount: ri.amount,
-          date: currentDate,
-          source: ri.source,
-          recurring_income_id: ri.id,
-          category_id: ri.category_id,
-          person_id: ri.person_id,
-          notes: ri.notes,
-        })
-        .select()
-        .single()
-
-      if (income) {
-        lastProcessed = currentDate
-        recurringIncomeProcessed++
-      }
-
-      currentDate = advanceByOneMonth(currentDate, ri.day_of_month)
-    }
-
-    // Atualiza a entrada recorrente com a próxima data futura
-    const shouldDeactivate = !!(ri.end_date && currentDate > ri.end_date)
-
-    await supabase
-      .from('recurring_income')
-      .update({
-        last_run_date: lastProcessed,
-        next_run_date: currentDate,
-        active: shouldDeactivate ? false : ri.active,
-        updated_at: now,
-      })
-      .eq('id', ri.id)
-      .eq('user_id', user.id)
-  }
 
   // ─── 1. Processar recorrências vencidas ──────────────────────────────────
   const { data: recurringList } = await supabase
@@ -111,7 +41,7 @@ export async function POST() {
     .is('deleted_at', null)
 
   for (const rt of (recurringList ?? [])) {
-    let closingDay = 0
+    let closingDay = 1
     if (rt.card_id) {
       const { data: card } = await supabase
         .from('cards')
@@ -229,7 +159,7 @@ export async function POST() {
       continue
     }
 
-    let closingDay = 0
+    let closingDay = 1
     if (tx.card_id) {
       const { data: card } = await supabase
         .from('cards')
@@ -266,10 +196,8 @@ export async function POST() {
   }
 
   revalidatePath('/invoices')
-  revalidatePath('/dashboard')
   revalidatePath('/transactions')
   revalidatePath('/recurring')
-  revalidatePath('/recurring-income')
 
-  return NextResponse.json({ recurringProcessed, scheduledProcessed, recurringIncomeProcessed })
+  return NextResponse.json({ recurringProcessed, scheduledProcessed })
 }

@@ -24,7 +24,7 @@ async function RecurringContent() {
       <div className="mx-auto max-w-3xl">
         <h1 className="mb-2 text-lg font-medium">Recorrências</h1>
         <p className="mb-6 text-sm text-muted-foreground">
-          Cadastre regras para entradas e saídas que geram lançamentos futuros de forma repetida.
+          Cadastre regras que geram lançamentos futuros de forma repetida.
         </p>
         <RecurringList />
       </div>

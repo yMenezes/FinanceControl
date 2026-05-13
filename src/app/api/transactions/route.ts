@@ -72,7 +72,7 @@ export async function POST(request: Request) {
 
   // 2. Apenas transações efetivamente postadas geram parcelas
   if (resolvedStatus === 'posted') {
-    let closingDay = 0;
+    let closingDay = 1;
     if (card_id) {
       const { data: card } = await supabase
         .from("cards")
@@ -99,7 +99,6 @@ export async function POST(request: Request) {
   }
 
   revalidatePath("/invoices");
-  revalidatePath("/dashboard");
   return NextResponse.json(transaction, { status: 201 });
 }
 
