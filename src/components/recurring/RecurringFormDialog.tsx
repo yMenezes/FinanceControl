@@ -41,11 +41,12 @@ type Props = {
   onClose: () => void;
   recurring?: RecurringWithRelations;
   onSaved?: () => void;
+  tabType?: 'expenses' | 'income';
 };
 
 const today = new Date().toISOString().split('T')[0];
 
-export function RecurringFormDialog({ open, onClose, recurring, onSaved }: Props) {
+export function RecurringFormDialog({ open, onClose, recurring, onSaved, tabType = 'expenses' }: Props) {
   const router = useRouter();
   const isEditing = !!recurring;
   const { cards, categories, people } = useTransactionData();
