@@ -2,36 +2,69 @@ import { createClient } from '@/lib/supabase/server'
 import { formatCurrency } from '@/lib/utils'
 import Link from 'next/link'
 
-type TransactionItem = {
+type RecentActivityItem = {
   id: string
   description: string
-  total_amount: number
-  purchase_date: string
+  amount: number
+  date: string
   category_icon: string | null
   category_name: string | null
+  kind: 'income' | 'expense'
 }
 
-async function getRecentTransactions(): Promise<TransactionItem[]> {
+async function getRecentTransactions(month?: string, year?: string): Promise<RecentActivityItem[]> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('User not found')
 
-  const { data } = await supabase
-    .from('transactions')
-    .select('id, description, total_amount, purchase_date, categories(name, icon)')
-    .eq('user_id', user.id)
-    .eq('status', 'posted')
-    .order('purchase_date', { ascending: false })
-    .limit(5)
+  const baseDate = month && year ? new Date(Number(year), Number(month) - 1, 1) : new Date()
+  const monthStart = `${baseDate.getFullYear()}-${String(baseDate.getMonth() + 1).padStart(2, '0')}-01`
+  const monthEnd = new Date(baseDate.getFullYear(), baseDate.getMonth() + 1, 0).toISOString().split('T')[0]
 
-  return (data ?? []).map((item: any) => ({
+  const [expensesRes, incomeRes] = await Promise.all([
+    supabase
+      .from('transactions')
+      .select('id, description, total_amount, purchase_date, categories(name, icon)')
+      .eq('user_id', user.id)
+      .eq('status', 'posted')
+      .gte('purchase_date', monthStart)
+      .lte('purchase_date', monthEnd)
+      .order('purchase_date', { ascending: false })
+      .limit(10),
+    supabase
+      .from('income')
+      .select('id, description, amount, date, categories(name, icon)')
+      .eq('user_id', user.id)
+      .is('deleted_at', null)
+      .gte('date', monthStart)
+      .lte('date', monthEnd)
+      .order('date', { ascending: false })
+      .limit(10),
+  ])
+
+  const expenses = (expensesRes.data ?? []).map((item: any) => ({
     id: item.id,
     description: item.description,
-    total_amount: item.total_amount,
-    purchase_date: item.purchase_date,
+    amount: item.total_amount,
+    date: item.purchase_date,
     category_icon: item.categories?.icon ?? null,
     category_name: item.categories?.name ?? null,
+    kind: 'expense' as const,
   }))
+
+  const income = (incomeRes.data ?? []).map((item: any) => ({
+    id: item.id,
+    description: item.description,
+    amount: item.amount,
+    date: item.date,
+    category_icon: item.categories?.icon ?? null,
+    category_name: item.categories?.name ?? null,
+    kind: 'income' as const,
+  }))
+
+  return [...expenses, ...income]
+    .sort((a, b) => new Date(`${b.date}T12:00:00`).getTime() - new Date(`${a.date}T12:00:00`).getTime())
+    .slice(0, 5)
 }
 
 function formatRelativeDate(dateStr: string): string {
@@ -47,8 +80,8 @@ function formatRelativeDate(dateStr: string): string {
   return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
 }
 
-export async function RecentTransactions() {
-  const transactions = await getRecentTransactions()
+export async function RecentTransactions({ month, year }: { month?: string; year?: string }) {
+  const transactions = await getRecentTransactions(month, year)
 
   return (
     <div className="bg-gradient-to-br from-card to-card/80 rounded-xl border border-border/50 p-6 shadow-sm hover:shadow-md transition-all">
@@ -63,25 +96,29 @@ export async function RecentTransactions() {
         <p className="text-sm text-muted-foreground py-2">Nenhuma movimentação encontrada.</p>
       ) : (
         <div className="flex flex-col divide-y divide-border/40">
-          {transactions.map((tx) => (
+          {transactions.map((tx) => {
+            const isIncome = tx.kind === 'income'
+
+            return (
             <div key={tx.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
               {/* Category icon */}
-              <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center text-lg flex-shrink-0">
-                {tx.category_icon ?? '📦'}
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0 ${isIncome ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'}`}>
+                {tx.category_icon ?? (isIncome ? '💰' : '📦')}
               </div>
               {/* Info */}
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{tx.description}</p>
                 <p className="text-xs text-muted-foreground">
-                  {tx.category_name ?? 'Sem categoria'} · {formatRelativeDate(tx.purchase_date)}
+                  {isIncome ? 'Entrada' : 'Saída'} · {tx.category_name ?? 'Sem categoria'} · {formatRelativeDate(tx.date)}
                 </p>
               </div>
               {/* Amount */}
-              <span className="text-sm font-semibold text-red-500 dark:text-red-400 flex-shrink-0 tabular-nums">
-                – {formatCurrency(tx.total_amount)}
+              <span className={`text-sm font-semibold flex-shrink-0 tabular-nums ${isIncome ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
+                {isIncome ? '+' : '–'} {formatCurrency(tx.amount)}
               </span>
             </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>
