@@ -5,13 +5,13 @@
  * Usage: import { Database } from '@/types/database'
  */
 
-export const INCOME_SOURCES = ['salary', 'freelance', 'loan', 'gift', 'other'] as const
+export const INCOME_SOURCES = ['salary', 'freelance', 'investment', 'gift', 'other'] as const
 export type IncomeSource = typeof INCOME_SOURCES[number]
 
 export const INCOME_SOURCE_LABELS: Record<IncomeSource, string> = {
   salary: 'Salário',
   freelance: 'Freelance',
-  loan: 'Empréstimo',
+  investment: 'Investimento',
   gift: 'Presente',
   other: 'Outro',
 }
@@ -433,6 +433,11 @@ export type RecurringTransactionUpdate = Database['public']['Tables']['recurring
 export type RecurringIncome = Database['public']['Tables']['recurring_income']['Row']
 export type RecurringIncomeInsert = Database['public']['Tables']['recurring_income']['Insert']
 export type RecurringIncomeUpdate = Database['public']['Tables']['recurring_income']['Update']
+
+export type RecurringIncomeWithRelations = RecurringIncome & {
+  categories: { id: string; name: string; icon: string; color: string } | null
+  people: { id: string; name: string } | null
+}
 
 export type Transaction = Database['public']['Tables']['transactions']['Row']
 export type TransactionInsert = Database['public']['Tables']['transactions']['Insert']

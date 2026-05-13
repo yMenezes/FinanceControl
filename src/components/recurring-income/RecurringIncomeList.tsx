@@ -191,7 +191,7 @@ export function RecurringIncomeList() {
           description={`Tem certeza que deseja excluir "${deleteTarget.description}"? Isto não pode ser desfeito.`}
           onClose={() => setDeleteTarget(null)}
           onConfirm={handleDelete}
-        />
+          open={true} />
       )}
     </>
   )

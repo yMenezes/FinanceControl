@@ -14,10 +14,14 @@ type UpcomingItem = {
   kind: 'income' | 'expense'
 }
 
-export async function UpcomingRecurring() {
+export async function UpcomingRecurring({ month, year }: { month?: string; year?: string }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('User not found')
+
+  const baseDate = month && year ? new Date(Number(year), Number(month) - 1, 1) : new Date()
+  const monthStart = `${baseDate.getFullYear()}-${String(baseDate.getMonth() + 1).padStart(2, '0')}-01`
+  const monthEnd = new Date(baseDate.getFullYear(), baseDate.getMonth() + 1, 0).toISOString().split('T')[0]
 
   const [expenseRes, incomeRes, cardsRes, catsRes, peopleRes] = await Promise.all([
     supabase
@@ -26,6 +30,8 @@ export async function UpcomingRecurring() {
       .eq('user_id', user.id)
       .eq('active', true)
       .is('deleted_at', null)
+      .gte('next_run_date', monthStart)
+      .lte('next_run_date', monthEnd)
       .order('next_run_date', { ascending: true })
       .limit(5),
     supabase
@@ -34,6 +40,8 @@ export async function UpcomingRecurring() {
       .eq('user_id', user.id)
       .eq('active', true)
       .is('deleted_at', null)
+      .gte('next_run_date', monthStart)
+      .lte('next_run_date', monthEnd)
       .order('next_run_date', { ascending: true })
       .limit(5),
     supabase.from('cards').select('id, name').is('deleted_at', null).eq('user_id', user.id),

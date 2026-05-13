@@ -42,9 +42,14 @@ type Props = {
   onSaved?: () => void;
 };
 
-const today = new Date().toISOString().split('T')[0];
+const today = new Date().toISOString().split("T")[0];
 
-export function RecurringIncomeFormDialog({ open, onClose, recurring, onSaved }: Props) {
+export function RecurringIncomeFormDialog({
+  open,
+  onClose,
+  recurring,
+  onSaved,
+}: Props) {
   const router = useRouter();
   const isEditing = !!recurring;
   const { categories, people } = useTransactionData();
@@ -53,9 +58,9 @@ export function RecurringIncomeFormDialog({ open, onClose, recurring, onSaved }:
   const form = useForm<RecurringIncomeInput>({
     resolver: zodResolver(recurringIncomeCreateSchema),
     defaultValues: {
-      description: '',
+      description: "",
       amount: 0,
-      source: 'other',
+      source: "other",
       day_of_month: 1,
       start_date: today,
       end_date: null,
@@ -66,43 +71,49 @@ export function RecurringIncomeFormDialog({ open, onClose, recurring, onSaved }:
       person_id: null,
       notes: null,
     },
-  })
+  });
 
-  const dayOfMonthValue = form.watch('day_of_month')
+  const dayOfMonthValue = form.watch("day_of_month");
 
   function formatDateToBR(dateStr: string) {
-    if (!dateStr) return ''
-    const [year, month, day] = dateStr.split('-')
-    return `${day}/${month}/${year}`
+    if (!dateStr) return "";
+    const [year, month, day] = dateStr.split("-");
+    return `${day}/${month}/${year}`;
   }
 
   function computeNextFromToday(dayOfMonth: number) {
     try {
-      const now = new Date()
-      const year = now.getFullYear()
-      const month = now.getMonth()
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth();
 
-      const lastDayOfMonth = (y: number, mo: number) => new Date(y, mo + 1, 0).getDate()
-      const dayThisMonth = Math.min(dayOfMonth, lastDayOfMonth(year, month))
-      const candidate = new Date(year, month, dayThisMonth)
+      const lastDayOfMonth = (y: number, mo: number) =>
+        new Date(y, mo + 1, 0).getDate();
+      const dayThisMonth = Math.min(dayOfMonth, lastDayOfMonth(year, month));
+      const candidate = new Date(year, month, dayThisMonth);
 
-      if (candidate >= new Date(now.getFullYear(), now.getMonth(), now.getDate())) {
-        return candidate.toISOString().split('T')[0]
+      if (
+        candidate >= new Date(now.getFullYear(), now.getMonth(), now.getDate())
+      ) {
+        return candidate.toISOString().split("T")[0];
       }
 
-      const nextMonth = month + 1
-      const nextYear = year + Math.floor(nextMonth / 12)
-      const nextMonthIndex = nextMonth % 12
-      const dayNextMonth = Math.min(dayOfMonth, lastDayOfMonth(nextYear, nextMonthIndex))
-      const candidate2 = new Date(nextYear, nextMonthIndex, dayNextMonth)
-      return candidate2.toISOString().split('T')[0]
+      const nextMonth = month + 1;
+      const nextYear = year + Math.floor(nextMonth / 12);
+      const nextMonthIndex = nextMonth % 12;
+      const dayNextMonth = Math.min(
+        dayOfMonth,
+        lastDayOfMonth(nextYear, nextMonthIndex),
+      );
+      const candidate2 = new Date(nextYear, nextMonthIndex, dayNextMonth);
+      return candidate2.toISOString().split("T")[0];
     } catch {
-      return today
+      return today;
     }
   }
 
   useEffect(() => {
-    if (!open) return
+    if (!open) return;
 
     if (isEditing && recurring) {
       form.reset({
@@ -110,20 +121,22 @@ export function RecurringIncomeFormDialog({ open, onClose, recurring, onSaved }:
         amount: recurring.amount,
         source: recurring.source,
         day_of_month: recurring.day_of_month,
-        start_date: recurring.start_date.split('T')[0],
-        end_date: recurring.end_date ? recurring.end_date.split('T')[0] : null,
-        next_run_date: recurring.next_run_date.split('T')[0],
-        last_run_date: recurring.last_run_date ? recurring.last_run_date.split('T')[0] : null,
+        start_date: recurring.start_date ? recurring.start_date.split("T")[0] : today,
+        end_date: recurring.end_date ? recurring.end_date.split("T")[0] : null,
+        next_run_date: recurring.next_run_date ? recurring.next_run_date.split("T")[0] : today,
+        last_run_date: recurring.last_run_date
+          ? recurring.last_run_date.split("T")[0]
+          : null,
         active: recurring.active,
         category_id: recurring.category_id,
         person_id: recurring.person_id,
         notes: recurring.notes,
-      })
+      });
     } else {
       form.reset({
-        description: '',
+        description: "",
         amount: 0,
-        source: 'other',
+        source: "other",
         day_of_month: 1,
         start_date: today,
         end_date: null,
@@ -133,28 +146,30 @@ export function RecurringIncomeFormDialog({ open, onClose, recurring, onSaved }:
         category_id: null,
         person_id: null,
         notes: null,
-      })
+      });
     }
-  }, [open, isEditing, recurring, form])
+  }, [open, isEditing, recurring, form]);
 
   useEffect(() => {
-    const next = computeNextFromToday(dayOfMonthValue ?? 1)
-    if (form.getValues('next_run_date') !== next) {
-      form.setValue('next_run_date', next, { shouldValidate: false })
+    const next = computeNextFromToday(dayOfMonthValue ?? 1);
+    if (form.getValues("next_run_date") !== next) {
+      form.setValue("next_run_date", next, { shouldValidate: false });
     }
-    if (form.getValues('start_date') !== next) {
-      form.setValue('start_date', next, { shouldValidate: false })
+    if (!isEditing && form.getValues("start_date") !== next) {
+      form.setValue("start_date", next, { shouldValidate: false });
     }
-  }, [form, dayOfMonthValue])
+  }, [form, dayOfMonthValue, isEditing]);
 
   async function handleSubmit(data: RecurringIncomeInput) {
     try {
-      const url = recurring ? `/api/recurring-income/${recurring.id}` : '/api/recurring-income'
-      const method = recurring ? 'PATCH' : 'POST'
+      const url = recurring
+        ? `/api/recurring-income/${recurring.id}`
+        : "/api/recurring-income";
+      const method = recurring ? "PATCH" : "POST";
 
       const res = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...data,
           next_run_date: data.start_date,
@@ -162,62 +177,111 @@ export function RecurringIncomeFormDialog({ open, onClose, recurring, onSaved }:
           last_run_date: data.last_run_date || null,
           notes: data.notes || null,
         }),
-      })
+      });
 
       if (!res.ok) {
-        const errorData = await res.json()
+        const errorData = await res.json();
         if (errorData.error?.fieldErrors) {
-          const validFields = ['description', 'amount', 'source', 'day_of_month', 'start_date', 'end_date', 'next_run_date', 'last_run_date', 'active', 'category_id', 'person_id', 'notes'] as const
-          Object.entries(errorData.error.fieldErrors).forEach(([key, msgs]: [string, any]) => {
-            if (validFields.includes(key as any)) {
-              form.setError(key as keyof RecurringIncomeInput, { message: msgs[0] })
-            }
-          })
-          return
+          const validFields = [
+            "description",
+            "amount",
+            "source",
+            "day_of_month",
+            "start_date",
+            "end_date",
+            "next_run_date",
+            "last_run_date",
+            "active",
+            "category_id",
+            "person_id",
+            "notes",
+          ] as const;
+          Object.entries(errorData.error.fieldErrors).forEach(
+            ([key, msgs]: [string, any]) => {
+              if (validFields.includes(key as any)) {
+                form.setError(key as keyof RecurringIncomeInput, {
+                  message: msgs[0],
+                });
+              }
+            },
+          );
+          return;
         }
 
-        form.setError('root', { message: errorData.error ?? 'Erro ao salvar entrada recorrente' })
-        return
+        form.setError("root", {
+          message: errorData.error ?? "Erro ao salvar entrada recorrente",
+        });
+        return;
       }
 
-      router.refresh()
-      onSaved?.()
-      onClose()
-      form.reset()
+      router.refresh();
+      onSaved?.();
+      onClose();
+      form.reset();
     } catch {
-      form.setError('root', { message: 'Erro de conexão' })
+      form.setError("root", { message: "Erro de conexão" });
     }
   }
 
-  const dayOptions = Array.from({ length: 31 }, (_, index) => index + 1)
+  const dayOptions = Array.from({ length: 31 }, (_, index) => index + 1);
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-2xl flex flex-col max-h-[90vh] gap-0 p-0">
         <DialogHeader className="px-6 pt-6 pb-4 border-b border-border shrink-0 pr-12">
-          <DialogTitle>{recurring ? 'Editar entrada recorrente' : 'Nova entrada recorrente'}</DialogTitle>
+          <DialogTitle>
+            {recurring
+              ? "Editar entrada recorrente"
+              : "Nova entrada recorrente"}
+          </DialogTitle>
         </DialogHeader>
 
-        <form id="recurring-income-form" onSubmit={form.handleSubmit(handleSubmit)} className="flex-1 overflow-y-auto overscroll-contain min-h-0 px-6 py-4 grid gap-4">
-          <input type="hidden" {...form.register('next_run_date')} />
-          <input type="hidden" {...form.register('start_date')} />
+        <form
+          id="recurring-income-form"
+          onSubmit={form.handleSubmit(handleSubmit)}
+          className="flex-1 overflow-y-auto overscroll-contain min-h-0 px-6 py-4 grid gap-4"
+        >
+          <input type="hidden" {...form.register("next_run_date")} />
+          <input type="hidden" {...form.register("start_date")} />
 
           <div className="grid gap-1.5">
             <Label htmlFor="description">Descrição</Label>
-            <Input id="description" placeholder="Ex: Salário, freelance, investimento..." {...form.register('description')} />
-            {form.formState.errors.description && <p className="text-sm text-destructive">{form.formState.errors.description.message}</p>}
+            <Input
+              id="description"
+              placeholder="Ex: Salário, freelance, investimento..."
+              {...form.register("description")}
+            />
+            {form.formState.errors.description && (
+              <p className="text-sm text-destructive">
+                {form.formState.errors.description.message}
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="grid gap-1.5">
               <Label htmlFor="amount">Valor</Label>
               <MoneyInput control={form.control} name="amount" id="amount" />
-              {form.formState.errors.amount && <p className="text-sm text-destructive">{form.formState.errors.amount.message}</p>}
+              {form.formState.errors.amount && (
+                <p className="text-sm text-destructive">
+                  {form.formState.errors.amount.message}
+                </p>
+              )}
             </div>
             <div className="grid gap-1.5">
               <Label>Origem</Label>
-              <Select value={form.watch('source')} onValueChange={(value) => form.setValue('source', value as RecurringIncomeInput['source'])}>
-                <SelectTrigger><SelectValue placeholder="Origem" /></SelectTrigger>
+              <Select
+                value={form.watch("source")}
+                onValueChange={(value) =>
+                  form.setValue(
+                    "source",
+                    value as RecurringIncomeInput["source"],
+                  )
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Origem" />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="salary">Salário</SelectItem>
                   <SelectItem value="freelance">Freelance</SelectItem>
@@ -226,27 +290,48 @@ export function RecurringIncomeFormDialog({ open, onClose, recurring, onSaved }:
                   <SelectItem value="other">Outro</SelectItem>
                 </SelectContent>
               </Select>
-              {form.formState.errors.source && <p className="text-sm text-destructive">{form.formState.errors.source.message}</p>}
+              {form.formState.errors.source && (
+                <p className="text-sm text-destructive">
+                  {form.formState.errors.source.message}
+                </p>
+              )}
             </div>
           </div>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="grid gap-1.5">
               <Label>Dia do mês</Label>
-              <Select value={String(form.watch('day_of_month'))} onValueChange={(value) => form.setValue('day_of_month', Number(value))}>
-                <SelectTrigger><SelectValue placeholder="Dia" /></SelectTrigger>
+              <Select
+                value={String(form.watch("day_of_month"))}
+                onValueChange={(value) =>
+                  form.setValue("day_of_month", Number(value))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Dia" />
+                </SelectTrigger>
                 <SelectContent>
                   {dayOptions.map((day) => (
-                    <SelectItem key={day} value={String(day)}>Dia {day}</SelectItem>
+                    <SelectItem key={day} value={String(day)}>
+                      Dia {day}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              {form.formState.errors.day_of_month && <p className="text-sm text-destructive">{form.formState.errors.day_of_month.message}</p>}
+              {form.formState.errors.day_of_month && (
+                <p className="text-sm text-destructive">
+                  {form.formState.errors.day_of_month.message}
+                </p>
+              )}
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="end_date">Data final (opcional)</Label>
-              <Input id="end_date" type="date" {...form.register('end_date')} />
-              {form.formState.errors.end_date && <p className="text-sm text-destructive">{form.formState.errors.end_date.message}</p>}
+              <Input id="end_date" type="date" {...form.register("end_date")} />
+              {form.formState.errors.end_date && (
+                <p className="text-sm text-destructive">
+                  {form.formState.errors.end_date.message}
+                </p>
+              )}
             </div>
           </div>
 
@@ -269,7 +354,12 @@ export function RecurringIncomeFormDialog({ open, onClose, recurring, onSaved }:
               </button>
             </div>
             <div className="relative">
-              <Input value={formatDateToBR(computeNextFromToday(form.watch('day_of_month')))} readOnly />
+              <Input
+                value={formatDateToBR(
+                  computeNextFromToday(form.watch("day_of_month")),
+                )}
+                readOnly
+              />
               {helpOpen && (
                 <div className="absolute left-0 top-full z-10 mt-2 max-w-[280px] rounded-md border bg-popover px-3 py-2 text-xs text-popover-foreground shadow-md">
                   Calculada a partir do dia do mês selecionado e da data atual.
@@ -281,24 +371,42 @@ export function RecurringIncomeFormDialog({ open, onClose, recurring, onSaved }:
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="grid gap-1.5">
               <Label>Categoria</Label>
-              <Select value={form.watch('category_id') ?? 'none'} onValueChange={(value) => form.setValue('category_id', value === 'none' ? null : value)}>
-                <SelectTrigger><SelectValue placeholder="Opcional" /></SelectTrigger>
+              <Select
+                value={form.watch("category_id") ?? "none"}
+                onValueChange={(value) =>
+                  form.setValue("category_id", value === "none" ? null : value)
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Opcional" />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Sem categoria</SelectItem>
                   {categories.map((category) => (
-                    <SelectItem key={category.id} value={category.id}>{category.icon} {category.name}</SelectItem>
+                    <SelectItem key={category.id} value={category.id}>
+                      {category.icon} {category.name}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="grid gap-1.5">
               <Label>Pessoa</Label>
-              <Select value={form.watch('person_id') ?? 'none'} onValueChange={(value) => form.setValue('person_id', value === 'none' ? null : value)}>
-                <SelectTrigger><SelectValue placeholder="Opcional" /></SelectTrigger>
+              <Select
+                value={form.watch("person_id") ?? "none"}
+                onValueChange={(value) =>
+                  form.setValue("person_id", value === "none" ? null : value)
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Opcional" />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Sem pessoa</SelectItem>
                   {people.map((person) => (
-                    <SelectItem key={person.id} value={person.id}>{person.name}</SelectItem>
+                    <SelectItem key={person.id} value={person.id}>
+                      {person.name}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -307,8 +415,15 @@ export function RecurringIncomeFormDialog({ open, onClose, recurring, onSaved }:
 
           <div className="grid gap-1.5">
             <Label>Status</Label>
-            <Select value={String(form.watch('active'))} onValueChange={(value) => form.setValue('active', value === 'true')}>
-              <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
+            <Select
+              value={String(form.watch("active"))}
+              onValueChange={(value) =>
+                form.setValue("active", value === "true")
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="true">Ativo</SelectItem>
                 <SelectItem value="false">Inativo</SelectItem>
@@ -318,17 +433,38 @@ export function RecurringIncomeFormDialog({ open, onClose, recurring, onSaved }:
 
           <div className="grid gap-1.5">
             <Label htmlFor="notes">Observações</Label>
-            <Input id="notes" placeholder="Opcional" {...form.register('notes')} />
+            <Input
+              id="notes"
+              placeholder="Opcional"
+              {...form.register("notes")}
+            />
           </div>
 
-          {form.formState.errors.root && <p className="text-sm text-destructive">{form.formState.errors.root.message}</p>}
+          {form.formState.errors.root && (
+            <p className="text-sm text-destructive">
+              {form.formState.errors.root.message}
+            </p>
+          )}
         </form>
 
         <DialogFooter className="px-6 py-4 border-t border-border shrink-0">
-          <Button type="button" variant="outline" onClick={onClose} disabled={form.formState.isSubmitting}>Cancelar</Button>
-          <Button type="submit" form="recurring-income-form" disabled={form.formState.isSubmitting}>{form.formState.isSubmitting ? 'Salvando...' : 'Salvar'}</Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onClose}
+            disabled={form.formState.isSubmitting}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="submit"
+            form="recurring-income-form"
+            disabled={form.formState.isSubmitting}
+          >
+            {form.formState.isSubmitting ? "Salvando..." : "Salvar"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

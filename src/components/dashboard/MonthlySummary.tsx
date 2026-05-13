@@ -18,12 +18,12 @@ function toLocalDateString(date: Date) {
   return `${year}-${month}-${day}`
 }
 
-async function getMonthlySummaryData(): Promise<SummaryData> {
+async function getMonthlySummaryData(baseDate?: Date | string): Promise<SummaryData> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('User not found')
 
-  const now = new Date()
+  const now = baseDate ? (baseDate instanceof Date ? baseDate : new Date(baseDate)) : new Date()
   const currentMonth = now.getMonth() + 1
   const currentYear = now.getFullYear()
   const monthStart = toLocalDateString(new Date(currentYear, currentMonth - 1, 1))
@@ -84,8 +84,9 @@ async function getMonthlySummaryData(): Promise<SummaryData> {
   return { income, expenses, recurringExpenses, recurringIncome, scheduled, currentBalance, forecastBalance }
 }
 
-export async function MonthlySummary() {
-  const { income, expenses, recurringExpenses, recurringIncome, scheduled, currentBalance, forecastBalance } = await getMonthlySummaryData()
+export async function MonthlySummary({ month, year }: { month?: string; year?: string }) {
+  const baseDate = month && year ? new Date(Number(year), Number(month) - 1, 1) : undefined
+  const { income, expenses, recurringExpenses, recurringIncome, scheduled, currentBalance, forecastBalance } = await getMonthlySummaryData(baseDate)
 
   const items = [
     { label: 'Entradas reais', value: income, color: '#10b981' },

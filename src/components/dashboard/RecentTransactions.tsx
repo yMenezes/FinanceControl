@@ -12,10 +12,14 @@ type RecentActivityItem = {
   kind: 'income' | 'expense'
 }
 
-async function getRecentTransactions(): Promise<RecentActivityItem[]> {
+async function getRecentTransactions(month?: string, year?: string): Promise<RecentActivityItem[]> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('User not found')
+
+  const baseDate = month && year ? new Date(Number(year), Number(month) - 1, 1) : new Date()
+  const monthStart = `${baseDate.getFullYear()}-${String(baseDate.getMonth() + 1).padStart(2, '0')}-01`
+  const monthEnd = new Date(baseDate.getFullYear(), baseDate.getMonth() + 1, 0).toISOString().split('T')[0]
 
   const [expensesRes, incomeRes] = await Promise.all([
     supabase
@@ -23,6 +27,8 @@ async function getRecentTransactions(): Promise<RecentActivityItem[]> {
       .select('id, description, total_amount, purchase_date, categories(name, icon)')
       .eq('user_id', user.id)
       .eq('status', 'posted')
+      .gte('purchase_date', monthStart)
+      .lte('purchase_date', monthEnd)
       .order('purchase_date', { ascending: false })
       .limit(10),
     supabase
@@ -30,6 +36,8 @@ async function getRecentTransactions(): Promise<RecentActivityItem[]> {
       .select('id, description, amount, date, categories(name, icon)')
       .eq('user_id', user.id)
       .is('deleted_at', null)
+      .gte('date', monthStart)
+      .lte('date', monthEnd)
       .order('date', { ascending: false })
       .limit(10),
   ])
@@ -72,8 +80,8 @@ function formatRelativeDate(dateStr: string): string {
   return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
 }
 
-export async function RecentTransactions() {
-  const transactions = await getRecentTransactions()
+export async function RecentTransactions({ month, year }: { month?: string; year?: string }) {
+  const transactions = await getRecentTransactions(month, year)
 
   return (
     <div className="bg-gradient-to-br from-card to-card/80 rounded-xl border border-border/50 p-6 shadow-sm hover:shadow-md transition-all">

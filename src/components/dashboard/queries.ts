@@ -32,13 +32,13 @@ function getMonthBounds(baseDate: Date = new Date()) {
   return { monthStart, monthEnd }
 }
 
-export async function getCashFlowSummary(): Promise<CashFlowSummary> {
+export async function getCashFlowSummary(baseDate?: Date | string): Promise<CashFlowSummary> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) throw new Error('User not found')
 
-  const now = new Date()
+  const now = baseDate ? (baseDate instanceof Date ? baseDate : new Date(baseDate)) : new Date()
   const currentMonth = now.getMonth() + 1
   const currentYear = now.getFullYear()
   const { monthStart, monthEnd } = getMonthBounds(now)
@@ -135,13 +135,13 @@ export async function getCashFlowSummary(): Promise<CashFlowSummary> {
   }
 }
 
-export async function getCashFlowHistory(): Promise<CashFlowHistory[]> {
+export async function getCashFlowHistory(baseDate?: Date | string): Promise<CashFlowHistory[]> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) throw new Error('User not found')
 
-  const now = new Date()
+  const now = baseDate ? (baseDate instanceof Date ? baseDate : new Date(baseDate)) : new Date()
   const months: CashFlowHistory[] = []
 
   // Calculate date range for last 6 months
@@ -201,13 +201,12 @@ export async function getCashFlowHistory(): Promise<CashFlowHistory[]> {
   return months
 }
 
-export async function getCategoryBreakdownData(): Promise<CategoryData[]> {
+export async function getCategoryBreakdownData(baseDate?: Date | string): Promise<CategoryData[]> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-
   if (!user) throw new Error('User not found')
 
-  const now = new Date()
+  const now = baseDate ? (baseDate instanceof Date ? baseDate : new Date(baseDate)) : new Date()
   const currentMonth = now.getMonth() + 1
   const currentYear = now.getFullYear()
 

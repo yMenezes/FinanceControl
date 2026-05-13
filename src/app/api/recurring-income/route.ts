@@ -4,28 +4,6 @@ import { NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import type { RecurringIncomeWithRelations } from '@/types/database'
 
-type RecurringIncomeWithRelations = {
-  id: string
-  user_id: string
-  description: string
-  amount: number
-  source: 'salary' | 'freelance' | 'investment' | 'gift' | 'other'
-  day_of_month: number
-  start_date: string
-  end_date: string | null
-  next_run_date: string
-  last_run_date: string | null
-  active: boolean
-  category_id: string | null
-  person_id: string | null
-  notes: string | null
-  created_at: string
-  updated_at: string
-  deleted_at: string | null
-  categories: { id: string; name: string; icon: string; color: string } | null
-  people: { id: string; name: string } | null
-}
-
 export async function GET(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -83,8 +61,19 @@ export async function GET(request: Request) {
   const totalCount = total ?? 0
   const hasMore = (page * limit) < totalCount
 
+  // Normalize joined data: Supabase returns arrays for joins, we need single objects
+  const normalizedData = data?.map(item => ({
+    ...item,
+    categories: Array.isArray(item.categories) && item.categories.length > 0 
+      ? item.categories[0] 
+      : null,
+    people: Array.isArray(item.people) && item.people.length > 0 
+      ? item.people[0] 
+      : null,
+  })) as RecurringIncomeWithRelations[]
+
   return NextResponse.json({
-    data: data as RecurringIncomeWithRelations[],
+    data: normalizedData,
     pagination: {
       page,
       limit,

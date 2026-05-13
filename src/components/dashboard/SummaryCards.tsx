@@ -2,12 +2,13 @@ import { formatCurrency } from '@/lib/utils'
 import { TrendingUp, TrendingDown, Wallet, Zap } from 'lucide-react'
 import { getCashFlowSummary, type CashFlowSummary } from './queries'
 
-async function getDashboardSummary(): Promise<CashFlowSummary> {
-  return getCashFlowSummary()
+async function getDashboardSummary(baseDate?: Date | string): Promise<CashFlowSummary> {
+  return getCashFlowSummary(baseDate)
 }
 
-export async function SummaryCards() {
-  const { income, expenses, expensesPaid, recurringTotal, scheduledTotal, recurringIncomeTotal } = await getDashboardSummary()
+export async function SummaryCards({ month, year }: { month?: string; year?: string }) {
+  const baseDate = month && year ? new Date(Number(year), Number(month) - 1, 1) : undefined
+  const { income, expenses, expensesPaid, recurringTotal, scheduledTotal, recurringIncomeTotal } = await getDashboardSummary(baseDate)
 
   // Saldo Atual: Entradas - Saídas lançadas no período
   const currentBalance = income - expenses
