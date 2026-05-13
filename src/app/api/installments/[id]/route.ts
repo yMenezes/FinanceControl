@@ -40,5 +40,6 @@ export async function PATCH(
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   revalidatePath('/invoices')
+  revalidatePath('/dashboard')
   return NextResponse.json({ success: true })
 }

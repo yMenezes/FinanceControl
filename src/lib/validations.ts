@@ -95,6 +95,48 @@ export type RecurringTransactionInput = z.infer<typeof recurringTransactionCreat
 export type RecurringTransactionUpdateInput = z.infer<typeof recurringTransactionUpdateSchema>
 
 // ──────────────────────────────────────────────────────────────
+// RECURRING INCOME
+// ──────────────────────────────────────────────────────────────
+
+const recurringIncomeFieldsSchema = {
+  description: z.string().min(1, 'Descrição obrigatória'),
+  amount: z.number().positive('Valor deve ser positivo'),
+  source: z.enum(['salary', 'freelance', 'investment', 'gift', 'other']),
+  day_of_month: z.number().int().min(1).max(31, 'Dia deve ser entre 1 e 31'),
+  start_date: z.string().date('Data inicial inválida'),
+  end_date: z.string().date('Data final inválida').optional().nullable(),
+  next_run_date: z.string().date('Próxima execução inválida'),
+  last_run_date: z.string().date('Última execução inválida').optional().nullable(),
+  active: z.boolean().default(true),
+  category_id: z.string().uuid('ID da categoria inválido').optional().nullable(),
+  person_id: z.string().uuid('ID da pessoa inválido').optional().nullable(),
+  notes: z.string().optional().nullable(),
+}
+
+export const recurringIncomeCreateSchema = z.object(recurringIncomeFieldsSchema).superRefine((data, ctx) => {
+  if (data.end_date && data.end_date < data.start_date) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['end_date'],
+      message: 'Data final deve ser igual ou posterior à data inicial',
+    })
+  }
+
+  if (data.next_run_date < data.start_date) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['next_run_date'],
+      message: 'Próxima execução deve ser igual ou posterior à data inicial',
+    })
+  }
+})
+
+export const recurringIncomeUpdateSchema = z.object(recurringIncomeFieldsSchema).partial()
+
+export type RecurringIncomeInput = z.infer<typeof recurringIncomeCreateSchema>
+export type RecurringIncomeUpdateInput = z.infer<typeof recurringIncomeUpdateSchema>
+
+// ──────────────────────────────────────────────────────────────
 // TRANSACTIONS
 // ──────────────────────────────────────────────────────────────
 

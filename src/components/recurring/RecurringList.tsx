@@ -1,18 +1,26 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Repeat, Pencil, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Repeat, Pencil, Trash2, ChevronLeft, ChevronRight, TrendingDown, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AddButton } from "@/components/ui/add-button";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import { RecurringFormDialog } from "./RecurringFormDialog";
-import type { RecurringTransaction } from "@/types/database";
+import { RecurringIncomeFormDialog } from "../recurring-income/RecurringIncomeFormDialog";
+import type { RecurringTransaction, RecurringIncome } from "@/types/database";
 
-type RecurringItem = RecurringTransaction & {
+type RecurringExpenseItem = RecurringTransaction & {
   cards: { id: string; name: string; color: string } | null;
   categories: { id: string; name: string; icon: string; color: string } | null;
   people: { id: string; name: string } | null;
 };
+
+type RecurringIncomeItem = RecurringIncome & {
+  categories: { id: string; name: string; icon: string; color: string } | null;
+  people: { id: string; name: string } | null;
+};
+
+type RecurringItem = RecurringExpenseItem | RecurringIncomeItem;
 
 type PaginationResponse = {
   data: RecurringItem[];
@@ -32,7 +40,10 @@ function formatDate(dateValue: string) {
   });
 }
 
+type TabType = 'expenses' | 'income';
+
 export function RecurringList() {
+  const [activeTab, setActiveTab] = useState<TabType>('expenses');
   const [page, setPage] = useState(1);
   const [items, setItems] = useState<RecurringItem[]>([]);
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, hasMore: false });
@@ -44,18 +55,26 @@ export function RecurringList() {
   const pageLabel = useMemo(() => Math.ceil(pagination.total / pagination.limit) || 1, [pagination.total, pagination.limit]);
 
   useEffect(() => {
+    setPage(1);
+  }, [activeTab]);
+
+  useEffect(() => {
     fetchRecurring()
-  }, [page])
+  }, [page, activeTab])
 
   async function fetchRecurring() {
     setLoading(true)
     try {
-      const res = await fetch(`/api/recurring-transactions?page=${page}&limit=10`)
+      const endpoint = activeTab === 'income' 
+        ? `/api/recurring-income?page=${page}&limit=10`
+        : `/api/recurring-transactions?page=${page}&limit=10`
+      
+      const res = await fetch(endpoint)
       const data: PaginationResponse = await res.json()
       setItems(data.data)
       setPagination(data.pagination)
     } catch (error) {
-      console.error('Error fetching recurring transactions:', error)
+      console.error('Error fetching recurring items:', error)
       setItems([])
     } finally {
       setLoading(false)
@@ -74,7 +93,11 @@ export function RecurringList() {
 
   async function handleDelete() {
     if (!deleteTarget) return
-    await fetch(`/api/recurring-transactions/${deleteTarget.id}`, { method: 'DELETE' })
+    const endpoint = activeTab === 'income'
+      ? `/api/recurring-income/${deleteTarget.id}`
+      : `/api/recurring-transactions/${deleteTarget.id}`
+    
+    await fetch(endpoint, { method: 'DELETE' })
     setDeleteTarget(null)
     setPage(1)
     await fetchRecurring()
@@ -83,7 +106,36 @@ export function RecurringList() {
   return (
     <>
       <div className="flex flex-col gap-4">
-        <AddButton label="Adicionar recorrência" onClick={openCreate} />
+        {/* Tab Selector */}
+        <div className="flex gap-2 border-b">
+          <button
+            onClick={() => setActiveTab('expenses')}
+            className={`px-4 py-2 text-sm font-medium transition-colors flex items-center gap-2 ${
+              activeTab === 'expenses'
+                ? 'border-b-2 border-rose-500 text-rose-600 dark:text-rose-400'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <TrendingDown className="h-4 w-4" />
+            Gastos Recorrentes
+          </button>
+          <button
+            onClick={() => setActiveTab('income')}
+            className={`px-4 py-2 text-sm font-medium transition-colors flex items-center gap-2 ${
+              activeTab === 'income'
+                ? 'border-b-2 border-emerald-500 text-emerald-600 dark:text-emerald-400'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <TrendingUp className="h-4 w-4" />
+            Rendas Recorrentes
+          </button>
+        </div>
+
+        <AddButton 
+          label={activeTab === 'income' ? 'Adicionar renda recorrente' : 'Adicionar gasto recorrente'} 
+          onClick={openCreate} 
+        />
 
         {loading ? (
           <div className="flex items-center justify-center py-8">
@@ -124,9 +176,9 @@ export function RecurringList() {
                         </span>
                         <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
                           <span className="text-[10px] font-medium rounded bg-blue-50 px-1.5 py-0.5 text-blue-700 dark:bg-blue-950 dark:text-blue-400">
-                            {item.total_amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            {(('total_amount' in item ? item.total_amount : item.amount) as number).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                           </span>
-                          {item.cards && <span className="text-xs text-muted-foreground">· {item.cards.name}</span>}
+                          {'cards' in item && item.cards && <span className="text-xs text-muted-foreground">· {item.cards.name}</span>}
                           {item.categories && <span className="text-xs text-muted-foreground">· {item.categories.name}</span>}
                           {item.people && <span className="text-xs text-muted-foreground">· {item.people.name}</span>}
                         </div>
@@ -166,15 +218,28 @@ export function RecurringList() {
         )}
       </div>
 
-      <RecurringFormDialog
-        open={formOpen}
-        onClose={() => setFormOpen(false)}
-        recurring={editRecurring}
-        onSaved={() => {
-          setPage(1)
-          fetchRecurring()
-        }}
-      />
+      {activeTab === 'expenses' ? (
+        <RecurringFormDialog
+          open={formOpen}
+          onClose={() => setFormOpen(false)}
+          recurring={editRecurring as RecurringExpenseItem}
+          tabType={activeTab}
+          onSaved={() => {
+            setPage(1)
+            fetchRecurring()
+          }}
+        />
+      ) : (
+        <RecurringIncomeFormDialog
+          open={formOpen}
+          onClose={() => setFormOpen(false)}
+          recurring={editRecurring as RecurringIncomeItem}
+          onSaved={() => {
+            setPage(1)
+            fetchRecurring()
+          }}
+        />
+      )}
 
       <DeleteDialog
         open={!!deleteTarget}
